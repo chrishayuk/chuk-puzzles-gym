@@ -16,76 +16,39 @@ This document outlines the current and planned puzzle games for the Puzzle Arcad
 | **Nonogram** | 5×5 to 10×10 | Line sum constraints + Blocks | ✅ Complete |
 | **Logic Grid** | Variable | Category associations + Logic | ✅ Complete |
 
-**Total Implemented: 7 games**
+### Advanced CP-SAT Puzzles
+
+| Game | Grid Size | Constraint Types | Status |
+|------|-----------|------------------|--------|
+| **Killer Sudoku** | 9×9 | Linear constraints + AllDifferent + Cages | ✅ Complete |
+| **Lights Out** | 5×5 to 7×7 | Boolean XOR constraints (SAT) | ✅ Complete |
+| **Mastermind** | 4-6 pegs | Deduction + Feedback constraints | ✅ Complete |
+| **Slitherlink** | 5×5 to 10×10 | Global loop + Edge constraints | ✅ Complete |
+
+### Optimization Challenges
+
+| Game | Problem Size | Constraint Types | Status |
+|------|-------------|------------------|--------|
+| **Knapsack** | 5-12 items | Value maximization + Capacity constraint | ✅ Complete |
+| **Task Scheduler** | 4-8 tasks | Makespan minimization + Dependencies + Resources | ✅ Complete |
+
+### Advanced Reasoning Puzzles
+
+| Game | Grid Size | Constraint Types | Status |
+|------|-----------|------------------|--------|
+| **Nurikabe** | 6×6 to 10×10 | Connectivity + Island sizes + No 2×2 blocks | ✅ Complete |
+| **Einstein's Puzzle** | 5 houses × 5 attributes | Multi-attribute deduction + Logic chains | ✅ Complete |
+| **Minesweeper** | 6×6 to 10×10 | Probabilistic reasoning + Safe deduction | ✅ Complete |
+
+**Total Implemented: 16 games**
 
 ---
 
-## Planned Games - Phase 1: Core CP-SAT Demonstrations
-
-### 🔥 High Priority (Best Solver Showcases)
-
-#### 1. **Slitherlink** 🎯
-- **Constraint Type**: Edge loops, global connectivity
-- **Grid Size**: 5×5 to 10×10
-- **Demonstrates**:
-  - Binary edge variables (on/off)
-  - Exactly 2 edges active per clue number
-  - Single continuous closed loop (global constraint)
-  - No branches or disconnected segments
-- **Solver Value**: ⭐⭐⭐⭐⭐ (Shows global loop constraints)
-- **Implementation Complexity**: Medium-High
-
-#### 2. **Lights Out** 🎯
-- **Constraint Type**: Boolean XOR-style SAT
-- **Grid Size**: 5×5 to 7×7
-- **Demonstrates**:
-  - Boolean variables (light on/off)
-  - XOR constraints (toggle affects neighbors)
-  - SAT-style problem solving
-  - Parity constraints
-- **Solver Value**: ⭐⭐⭐⭐⭐ (Perfect SAT showcase)
-- **Implementation Complexity**: Medium
-
-#### 3. **Mastermind** 🎯
-- **Constraint Type**: Deduction, implication, combination space
-- **Setup**: 4-6 pegs, 6-8 colors
-- **Demonstrates**:
-  - Integer variables (colors)
-  - Feedback consistency constraints
-  - Black/white peg counting
-  - Deductive reasoning
-- **Solver Value**: ⭐⭐⭐⭐⭐ (Shows deduction power)
-- **Implementation Complexity**: Medium
-
-#### 4. **Killer Sudoku** 🎯
-- **Grid Size**: 9×9
-- **Constraint Type**: Linear constraints + AllDifferent
-- **Demonstrates**:
-  - Sum constraints (like Kakuro)
-  - AllDifferent per cage
-  - AllDifferent per row/col/box
-  - Hybrid arithmetic + logic
-- **Solver Value**: ⭐⭐⭐⭐ (Combines multiple constraint types)
-- **Implementation Complexity**: Low (similar to existing games)
-
----
-
-## Planned Games - Phase 2: Advanced Constraint Types
+## Planned Games - Future Phases
 
 ### Advanced CP-SAT Puzzles
 
-#### 5. **Nurikabe**
-- **Constraint Type**: Region connectivity, adjacency rules
-- **Grid Size**: 8×8 to 12×12
-- **Demonstrates**:
-  - Black/white cell variables
-  - Connected region constraints
-  - "No 2×2 black block" rule
-  - All white regions touch specific numbers
-- **Solver Value**: ⭐⭐⭐⭐ (Region constraints)
-- **Implementation Complexity**: High
-
-#### 6. **Masyu**
+#### **Masyu**
 - **Constraint Type**: Loop paths, directional constraints
 - **Grid Size**: 6×6 to 10×10
 - **Demonstrates**:
@@ -96,7 +59,7 @@ This document outlines the current and planned puzzle games for the Puzzle Arcad
 - **Solver Value**: ⭐⭐⭐⭐ (Directional constraints)
 - **Implementation Complexity**: Medium-High
 
-#### 7. **Hitori**
+#### **Hitori**
 - **Constraint Type**: Elimination + adjacency
 - **Grid Size**: 6×6 to 10×10
 - **Demonstrates**:
@@ -107,48 +70,9 @@ This document outlines the current and planned puzzle games for the Puzzle Arcad
 - **Solver Value**: ⭐⭐⭐ (Hybrid constraints)
 - **Implementation Complexity**: Medium
 
----
+### Optimization Challenges
 
-## Planned Games - Phase 3: Optimization Showcase
-
-### 🚀 Real-World Optimization Demonstrations
-
-These games demonstrate **objective optimization** - a key feature that distinguishes CP-SAT from pure logic puzzles!
-
-#### 8. **Mini Scheduler** 🎯
-- **Type**: Task scheduling optimization
-- **Demonstrates**:
-  - Task variables with start times
-  - Duration constraints
-  - Dependency constraints (task A before B)
-  - Resource constraints
-  - **Objective**: Minimize total time (makespan)
-- **Solver Value**: ⭐⭐⭐⭐⭐ (Real-world application!)
-- **Implementation Complexity**: Medium
-- **Example**:
-  ```
-  Tasks: A(3hrs), B(2hrs), C(4hrs)
-  Dependencies: A→C, B→C
-  Workers: 2
-  Goal: Minimize completion time
-  ```
-
-#### 9. **Knapsack Puzzle**
-- **Type**: Value optimization under capacity
-- **Demonstrates**:
-  - Binary selection variables
-  - Linear capacity constraint
-  - **Objective**: Maximize total value
-- **Solver Value**: ⭐⭐⭐⭐⭐ (Classic optimization)
-- **Implementation Complexity**: Low
-- **Example**:
-  ```
-  Items: Gold(5kg,$100), Silver(3kg,$50), Bronze(2kg,$20)
-  Capacity: 8kg
-  Goal: Maximize value
-  ```
-
-#### 10. **Bin Packing**
+#### **Bin Packing**
 - **Type**: Assignment optimization
 - **Demonstrates**:
   - Item-to-bin assignment
@@ -163,11 +87,9 @@ These games demonstrate **objective optimization** - a key feature that distingu
   Goal: Use minimum bins
   ```
 
----
+### Extended Variants
 
-## Planned Games - Phase 4: Extended Variants
-
-### Larger/Harder Variants of Existing Games
+**Larger/Harder Variants of Existing Games:**
 
 - **Latin Squares** (generalized Sudoku, N×N)
 - **Magic Squares** (sum constraints everywhere)
@@ -176,29 +98,25 @@ These games demonstrate **objective optimization** - a key feature that distingu
 - **Calcudoku** (KenKen variant with more operators)
 - **Kakurasu** (weighted row/col sums, binary grid)
 
----
+### Logic/Detective Puzzles
 
-## Planned Games - Phase 5: Logic/Detective Puzzles
-
-### Extended Logic Grid Variants
+**Extended Logic Grid Variants:**
 
 - **Murder Mystery** (who, where, weapon, time)
 - **Logic Detective** (solve crimes with clues)
-- **Einstein's Puzzle** (houses, colors, pets, drinks)
 - **Office Assignment** (people, desks, departments, floors)
 
 These demonstrate **business rule reasoning** - showing how the solver can handle real-world logical deduction problems.
 
 ---
 
-## Menu Reorganization Plan
+## Current Menu Organization
 
-The game menu will be reorganized into three categories to showcase different solver capabilities:
+The game menu is now organized into four categories showcasing different solver capabilities:
 
 ```
 ==================================================
        WELCOME TO THE PUZZLE ARCADE!
-       Powered by chuk-mcp-solver
 ==================================================
 
 CLASSIC LOGIC PUZZLES (7 games)
@@ -211,42 +129,32 @@ CLASSIC LOGIC PUZZLES (7 games)
   7) Logic Grid      - Category associations
 
 ADVANCED CP-SAT PUZZLES (4 games)
-  8) Slitherlink     - Global loop constraints ⭐
-  9) Mastermind      - Deductive reasoning ⭐
- 10) Lights Out      - Boolean SAT solving ⭐
- 11) Killer Sudoku   - Hybrid constraints ⭐
+  8) Killer Sudoku   - Hybrid constraints
+  9) Lights Out      - Boolean SAT solving
+ 10) Mastermind      - Deductive reasoning
+ 11) Slitherlink     - Global loop constraints
 
-OPTIMIZATION CHALLENGES (3 games)
- 12) Task Scheduler  - Minimize completion time ⭐
- 13) Knapsack        - Maximize value ⭐
- 14) Bin Packing     - Minimize resources ⭐
+OPTIMIZATION CHALLENGES (2 games)
+ 12) Knapsack        - Maximize value
+ 13) Task Scheduler  - Minimize completion time
+
+ADVANCED REASONING PUZZLES (3 games)
+ 14) Nurikabe        - Island and sea puzzle
+ 15) Einstein's Puzzle - Who owns the fish?
+ 16) Minesweeper     - Find all mines
 ==================================================
 ```
 
 ---
 
-## Implementation Priority
+## Future Implementation Priority
 
-### Phase 1: Next 4 Games (Immediate)
-1. **Lights Out** - Quick to implement, perfect SAT demo
-2. **Killer Sudoku** - Reuses existing Sudoku code
-3. **Mastermind** - Unique gameplay, great deduction showcase
-4. **Slitherlink** - More complex, but amazing constraint demo
-
-### Phase 2: Optimization Games (High Impact)
-5. **Knapsack** - Simple optimization, big impact
-6. **Task Scheduler** - Real-world application showcase
-7. **Bin Packing** - Resource allocation demo
-
-### Phase 3: Advanced Puzzles
-8. **Nurikabe** - Advanced connectivity
-9. **Masyu** - Loop variations
-10. **Hitori** - Elimination logic
-
-### Phase 4: Variants & Extensions
-- Larger versions of existing games
-- More logic grid scenarios
-- Additional optimization problems
+### Next Phase: Additional Puzzles
+1. **Bin Packing** - Resource allocation optimization
+2. **Masyu** - Loop puzzle variations
+3. **Hitori** - Elimination logic puzzles
+4. **Extended Variants** - Larger versions of existing games
+5. **Logic Grid Scenarios** - More detective-style puzzles
 
 ---
 
@@ -282,15 +190,18 @@ For each game type, here's how they map to CP-SAT JSON models:
 
 ---
 
-## Success Metrics
+## Success Metrics - Current Status
 
-By completing this roadmap, the Puzzle Arcade Server will:
+The Puzzle Arcade Server now achieves:
 
-✅ Demonstrate **all major CP-SAT constraint types**
-✅ Show **optimization** capabilities (not just satisfaction)
-✅ Provide **real-world application** examples (scheduling, packing)
-✅ Cover **SAT**, **CSP**, and **MIP** problem classes
-✅ Serve as a comprehensive **constraint solver showcase**
+✅ **All major CP-SAT constraint types** demonstrated
+✅ **Optimization capabilities** (Knapsack, Task Scheduler)
+✅ **Real-world applications** (scheduling, resource allocation)
+✅ **SAT, CSP, and optimization** problem classes covered
+✅ **Probabilistic reasoning** (Minesweeper)
+✅ **Temporal reasoning** (Task Scheduler)
+✅ **Connectivity constraints** (Nurikabe, Slitherlink)
+✅ **Comprehensive constraint solver showcase** with 16 diverse games
 
 ---
 
@@ -310,5 +221,6 @@ See [README.md](README.md) for implementation details.
 ---
 
 **Last Updated**: December 2025
-**Current Games**: 7 implemented, 10+ planned
-**Target**: 17+ games covering all major constraint types
+**Current Games**: 16 implemented
+**Future Expansion**: 5+ additional games planned
+**Status**: All major constraint types now covered! 🎉

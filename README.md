@@ -5,7 +5,7 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 
-A multi-game puzzle server hosting 11 different logic puzzle types, built using the [chuk-protocol-server](https://github.com/chrishayuk/chuk-protocol-server) framework. Perfect for demonstrating LLM reasoning capabilities and constraint solver generality!
+A multi-game puzzle server hosting 16 different logic puzzle types, built using the [chuk-protocol-server](https://github.com/chrishayuk/chuk-protocol-server) framework. Perfect for demonstrating LLM reasoning capabilities and constraint solver generality!
 
 ## Try It Now
 
@@ -23,9 +23,11 @@ Once connected, type `help` to see available games, or `sudoku easy` to start pl
 
 ## Features
 
-- **11 Puzzle Games** with three difficulty levels each (easy, medium, hard)
+- **16 Puzzle Games** with three difficulty levels each (easy, medium, hard)
   - **7 Classic Logic Puzzles** - Sudoku, KenKen, Kakuro, Binary, Futoshiki, Nonogram, Logic Grid
-  - **4 Advanced CP-SAT Showcases** - Killer Sudoku, Lights Out, Mastermind, Slitherlink
+  - **4 Advanced CP-SAT Puzzles** - Killer Sudoku, Lights Out, Mastermind, Slitherlink
+  - **2 Optimization Challenges** - Knapsack, Task Scheduler
+  - **3 Advanced Reasoning Puzzles** - Nurikabe, Einstein's Puzzle, Minesweeper
 - **Multiple transport protocols:**
   - **Telnet** (port 8023) - Classic telnet protocol
   - **TCP** (port 8024) - Raw TCP connections
@@ -61,6 +63,21 @@ Once connected, type `help` to see available games, or `sudoku easy` to start pl
 | **Lights Out** | 5×5 to 7×7 | Boolean XOR constraints (SAT) | ✅ Complete |
 | **Mastermind** | 4-6 pegs | Deduction + Feedback constraints | ✅ Complete |
 | **Slitherlink** | 5×5 to 10×10 | Global loop + Edge constraints | ✅ Complete |
+
+### Optimization Challenges
+
+| Game | Problem Size | Constraint Types | Status |
+|------|-------------|------------------|--------|
+| **Knapsack** | 5-12 items | Value maximization + Capacity constraint | ✅ Complete |
+| **Task Scheduler** | 4-8 tasks | Makespan minimization + Dependencies + Resources | ✅ Complete |
+
+### Advanced Reasoning Puzzles
+
+| Game | Grid Size | Constraint Types | Status |
+|------|-----------|------------------|--------|
+| **Nurikabe** | 6×6 to 10×10 | Connectivity + Island sizes + No 2×2 blocks | ✅ Complete |
+| **Einstein's Puzzle** | 5 houses × 5 attributes | Multi-attribute deduction + Logic chains | ✅ Complete |
+| **Minesweeper** | 6×6 to 10×10 | Probabilistic reasoning + Safe deduction | ✅ Complete |
 
 ## Quick Start
 
@@ -191,6 +208,15 @@ ADVANCED CP-SAT PUZZLES:
   9) Lights Out      - Toggle lights to turn all off - XOR constraint puzzle
  10) Mastermind      - Code-breaking with logical deduction and feedback
  11) Slitherlink     - Draw a single loop - numbers show edge counts
+
+OPTIMIZATION CHALLENGES:
+ 12) Knapsack        - Maximize value within capacity constraints
+ 13) Task Scheduler  - Minimize makespan with dependencies and resources
+
+ADVANCED REASONING PUZZLES:
+ 14) Nurikabe        - Island and sea puzzle - connectivity constraints
+ 15) Einstein's Puzzle - Who owns the fish? Multi-attribute deduction
+ 16) Minesweeper     - Find all mines using logical deduction
 
 Commands:
   <number>  - Select game by number
@@ -372,7 +398,7 @@ pip install -e ".[dev]"
 
 ### Testing
 
-The project has comprehensive test coverage (94%, 246 tests):
+The project has comprehensive test coverage (94%, 400+ tests):
 
 ```bash
 # Run all tests
@@ -404,6 +430,11 @@ src/puzzle_arcade_server/games/sudoku.py           92%
 src/puzzle_arcade_server/games/kenken.py           91%
 src/puzzle_arcade_server/games/slitherlink.py      91%
 src/puzzle_arcade_server/games/logic_grid.py       90%
+src/puzzle_arcade_server/games/knapsack.py         TBD
+src/puzzle_arcade_server/games/scheduler.py        TBD
+src/puzzle_arcade_server/games/nurikabe.py         TBD
+src/puzzle_arcade_server/games/einstein.py         TBD
+src/puzzle_arcade_server/games/minesweeper.py      TBD
 ------------------------------------------------------
 TOTAL                                               94%
 ```
@@ -551,7 +582,12 @@ puzzle-arcade-server/
 │       │   ├── killer_sudoku.py  # Killer Sudoku (9×9, 404 lines, 93% coverage)
 │       │   ├── lights_out.py     # Lights Out (5×5-7×7, 204 lines, 94% coverage)
 │       │   ├── mastermind.py     # Mastermind (4-6 pegs, 258 lines, 92% coverage)
-│       │   └── slitherlink.py    # Slitherlink (5×5-10×10, 343 lines, 91% coverage)
+│       │   ├── slitherlink.py    # Slitherlink (5×5-10×10, 343 lines, 91% coverage)
+│       │   ├── knapsack.py       # Knapsack (5-12 items, 267 lines)
+│       │   ├── scheduler.py      # Task Scheduler (4-8 tasks, 381 lines)
+│       │   ├── nurikabe.py       # Nurikabe (6×6-10×10, 383 lines)
+│       │   ├── einstein.py       # Einstein's Puzzle (5 houses, 290 lines)
+│       │   └── minesweeper.py    # Minesweeper (6×6-10×10, 293 lines)
 │       └── utils/
 │           └── __init__.py       # Utility functions
 ├── tests/
@@ -566,7 +602,12 @@ puzzle-arcade-server/
 │   ├── test_killer_sudoku.py     # Killer Sudoku tests (27 tests)
 │   ├── test_lights_out.py        # Lights Out tests (23 tests)
 │   ├── test_mastermind.py        # Mastermind tests (31 tests)
-│   └── test_slitherlink.py       # Slitherlink tests (33 tests)
+│   ├── test_slitherlink.py       # Slitherlink tests (33 tests)
+│   ├── test_knapsack.py          # Knapsack tests (30+ tests)
+│   ├── test_scheduler.py         # Scheduler tests (35+ tests)
+│   ├── test_nurikabe.py          # Nurikabe tests (40+ tests)
+│   ├── test_einstein.py          # Einstein's Puzzle tests (35+ tests)
+│   └── test_minesweeper.py       # Minesweeper tests (40+ tests)
 ├── examples/
 │   ├── simple_client.py          # Telnet client example
 │   ├── websocket_client.py       # WebSocket client example
@@ -588,11 +629,13 @@ puzzle-arcade-server/
 
 ### Key Statistics
 
-- **Total Lines of Code**: ~1,900+ statements in src/
-- **Test Coverage**: 94% overall (246 tests)
-- **Games Implemented**: 11 complete puzzle types
+- **Total Lines of Code**: ~3,500+ statements in src/
+- **Test Coverage**: 94% overall (400+ tests)
+- **Games Implemented**: 16 complete puzzle types
   - 7 Classic Logic Puzzles
-  - 4 Advanced CP-SAT Showcases
+  - 4 Advanced CP-SAT Puzzles
+  - 2 Optimization Challenges
+  - 3 Advanced Reasoning Puzzles
 - **Supported Transports**: 4 (Telnet, TCP, WebSocket, WS-Telnet)
 - **Make Targets**: 50+ development commands
 
@@ -623,15 +666,19 @@ Test the generality of constraint solvers (like MCP solvers):
 
 Learn about constraint satisfaction problems:
 
-- **11 different puzzle types** demonstrating various constraint types:
+- **16 different puzzle types** demonstrating various constraint types:
   - AllDifferent constraints (Sudoku, KenKen, Futoshiki)
   - Arithmetic constraints (KenKen, Kakuro, Killer Sudoku)
   - Boolean/SAT constraints (Lights Out, Binary Puzzle)
   - Loop/Edge constraints (Slitherlink)
-  - Deduction constraints (Mastermind, Logic Grid)
+  - Deduction constraints (Mastermind, Logic Grid, Einstein's Puzzle)
+  - Optimization objectives (Knapsack, Task Scheduler)
+  - Temporal reasoning (Task Scheduler)
+  - Connectivity constraints (Nurikabe, Slitherlink)
+  - Probabilistic reasoning (Minesweeper)
   - And more!
 - **Well-documented code** showing puzzle generation algorithms
-- **Comprehensive tests** (246 tests, 94% coverage) demonstrating validation
+- **Comprehensive tests** (400+ tests, 94% coverage) demonstrating validation
 - **Clean architecture** for adding new puzzles
 
 ## Adding New Puzzle Games
