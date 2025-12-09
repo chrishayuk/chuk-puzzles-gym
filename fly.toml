@@ -1,0 +1,53 @@
+# fly.toml app configuration file generated for puzzle-arcade-server on 2025-12-09T00:12:36Z
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'puzzle-arcade-server'
+primary_region = 'sjc'
+
+[build]
+  dockerfile = 'Dockerfile'
+
+[env]
+  PORT = '8023'
+
+[http_service]
+  internal_port = 8025
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
+
+[[services]]
+  protocol = 'tcp'
+  internal_port = 8023
+
+  [[services.ports]]
+    port = 8023
+
+[[services]]
+  protocol = 'tcp'
+  internal_port = 8024
+
+  [[services.ports]]
+    port = 8024
+
+[[services]]
+  protocol = 'tcp'
+  internal_port = 8025
+
+  [[services.ports]]
+    port = 8025
+
+[[services]]
+  protocol = 'tcp'
+  internal_port = 8026
+
+  [[services.ports]]
+    port = 8026
+
+[[vm]]
+  memory = '1gb'
+  cpu_kind = 'shared'
+  cpus = 1

@@ -1,0 +1,127 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "puzzle-arcade-server"
+version = "0.1.0"
+description = "Multi-game puzzle server for telnet - LLMs with MCP solvers welcome!"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+    {name = "Chris Hay"}
+]
+keywords = ["puzzle", "telnet", "server", "game", "sudoku", "kenken", "kakuro", "websocket", "mcp"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    "chuk-protocol-server>=0.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-watch>=4.2.0",
+    "ruff>=0.1.0",
+    "mypy>=1.4.0",
+    "bandit>=1.7.5",
+    "websockets>=11.0.0",
+    "ipython>=8.14.0",
+]
+
+[project.scripts]
+puzzle-arcade-server = "puzzle_arcade_server.server:run_server"
+
+[project.urls]
+Homepage = "https://github.com/chrishayuk/puzzle-arcade-server"
+Repository = "https://github.com/chrishayuk/puzzle-arcade-server"
+Documentation = "https://github.com/chrishayuk/puzzle-arcade-server#readme"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+packages = ["puzzle_arcade_server", "puzzle_arcade_server.base", "puzzle_arcade_server.games", "puzzle_arcade_server.utils"]
+
+[tool.setuptools.package-data]
+"*" = ["*.yaml", "*.yml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --strict-markers"
+markers = [
+    "asyncio: mark test as asyncio test",
+]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "B",    # flake8-bugbear
+    "C4",   # flake8-comprehensions
+    "UP",   # pyupgrade
+]
+ignore = [
+    "E501",  # line too long (handled by formatter)
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.11"
+files = ["src"]
+ignore_missing_imports = true
+exclude = [
+    "venv/",
+    "env/",
+    "build/",
+    "dist/",
+    ".eggs/",
+    ".pytest_cache/",
+    ".mypy_cache/",
+]
+no_strict_optional = true
+follow_imports = "skip"
+follow_imports_for_stubs = false
+
+[tool.coverage.run]
+source = ["src"]
+omit = [
+    "tests/*",
+    "examples/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+]
+omit = [
+    "src/puzzle_arcade_server/server.py",  # Requires chuk-protocol-server integration testing
+    "src/puzzle_arcade_server/__init__.py",  # Lazy loading helper
+]
