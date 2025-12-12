@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "puzzle-arcade-server"
-version = "0.4"
+version = "0.4.1"
 description = "Multi-game puzzle server for telnet - LLMs with MCP solvers welcome!"
 readme = "README.md"
 requires-python = ">=3.11"

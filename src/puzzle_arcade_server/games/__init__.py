@@ -3,7 +3,9 @@
 from .binary import BinaryPuzzleGame
 from .bridges import BridgesGame
 from .einstein import EinsteinGame
+from .fillomino import FillominoGame
 from .futoshiki import FutoshikiGame
+from .hidato import HidatoGame
 from .hitori import HitoriGame
 from .kakuro import KakuroGame
 from .kenken import KenKenGame
@@ -18,7 +20,10 @@ from .nurikabe import NurikabeGame
 from .scheduler import SchedulerGame
 from .shikaku import ShikakuGame
 from .slitherlink import SlitherlinkGame
+from .sokoban import SokobanGame
+from .star_battle import StarBattleGame
 from .sudoku import SudokuGame
+from .tents import TentsGame
 
 # Registry of available games
 AVAILABLE_GAMES = {
@@ -38,6 +43,12 @@ AVAILABLE_GAMES = {
     "bridges": BridgesGame,
     "hitori": HitoriGame,
     "shikaku": ShikakuGame,
+    # Specialized Constraint Puzzles
+    "hidato": HidatoGame,
+    "tents": TentsGame,
+    "fillomino": FillominoGame,
+    "star_battle": StarBattleGame,
+    "sokoban": SokobanGame,
     # Optimization Challenges
     "knapsack": KnapsackGame,
     "scheduler": SchedulerGame,
@@ -53,7 +64,9 @@ __all__ = [
     "KakuroGame",
     "BinaryPuzzleGame",
     "BridgesGame",
+    "FillominoGame",
     "FutoshikiGame",
+    "HidatoGame",
     "HitoriGame",
     "NonogramGame",
     "LogicGridGame",
@@ -62,6 +75,9 @@ __all__ = [
     "MastermindGame",
     "ShikakuGame",
     "SlitherlinkGame",
+    "SokobanGame",
+    "StarBattleGame",
+    "TentsGame",
     "KnapsackGame",
     "SchedulerGame",
     "NurikabeGame",
