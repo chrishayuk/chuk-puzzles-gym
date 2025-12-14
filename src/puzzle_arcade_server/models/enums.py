@@ -30,6 +30,7 @@ class GameCommand(str, Enum):
     # Game-specific commands
     PLACE = "place"
     CLEAR = "clear"
+    PRESS = "press"
     CONNECT = "connect"
     EXCLUDE = "exclude"
     REVEAL = "reveal"

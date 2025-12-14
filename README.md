@@ -293,14 +293,21 @@ ADVANCED CP-SAT PUZZLES:
  13) Hitori          - Shade cells to eliminate duplicates - no adjacent shading
  14) Shikaku         - Divide grid into rectangles matching areas
 
+SPECIALIZED CONSTRAINT PUZZLES:
+ 15) Hidato          - Sequential path puzzle - connect numbers adjacently
+ 16) Tents           - Place tents next to trees - bipartite matching puzzle
+ 17) Fillomino       - Fill regions with numbers matching region size
+ 18) Star Battle     - Place stars avoiding adjacency - multi-region placement
+ 19) Sokoban         - Push boxes to targets - spatial planning puzzle
+
 OPTIMIZATION CHALLENGES:
- 15) Knapsack        - Maximize value within capacity constraints
- 16) Task Scheduler  - Minimize makespan with dependencies and resources
+ 20) Knapsack        - Maximize value within capacity constraints
+ 21) Task Scheduler  - Minimize makespan with dependencies and resources
 
 ADVANCED REASONING PUZZLES:
- 17) Nurikabe        - Island and sea puzzle - connectivity constraints
- 18) Einstein's Puzzle - Who owns the fish? Multi-attribute deduction
- 19) Minesweeper     - Find all mines using logical deduction
+ 22) Nurikabe        - Island and sea puzzle - connectivity constraints
+ 23) Einstein's Puzzle - Who owns the fish? Multi-attribute deduction
+ 24) Minesweeper     - Find all mines using logical deduction
 
 Commands:
   <number>  - Select game by number
@@ -522,7 +529,7 @@ pip install -e ".[dev]"
 
 ### Testing
 
-The project has comprehensive test coverage (95%, 530 tests):
+The project has comprehensive test coverage (95%, 716 tests):
 
 ```bash
 # Run all tests
@@ -784,11 +791,12 @@ puzzle-arcade-server/
 ### Key Statistics
 
 - **Total Lines of Code**: 3,700+ statements in src/
-- **Test Coverage**: 95% overall (530 tests, all passing)
+- **Test Coverage**: 95% overall (716 tests, all passing)
 - **Code Quality Score**: 9.8/10 (near perfect compliance)
-- **Games Implemented**: 19 complete puzzle types
+- **Games Implemented**: 24 complete puzzle types
   - 7 Classic Logic Puzzles
   - 7 Advanced CP-SAT Puzzles
+  - 5 Specialized Constraint Puzzles
   - 2 Optimization Challenges
   - 3 Advanced Reasoning Puzzles
 - **Supported Transports**: 4 (Telnet, TCP, WebSocket, WS-Telnet)
@@ -823,7 +831,7 @@ Test the generality of constraint solvers (like MCP solvers):
 
 Learn about constraint satisfaction problems:
 
-- **19 different puzzle types** demonstrating various constraint types:
+- **24 different puzzle types** demonstrating various constraint types:
   - AllDifferent constraints (Sudoku, KenKen, Futoshiki)
   - Arithmetic constraints (KenKen, Kakuro, Killer Sudoku)
   - Boolean/SAT constraints (Lights Out, Binary Puzzle)

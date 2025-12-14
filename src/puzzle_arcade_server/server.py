@@ -351,6 +351,35 @@ class ArcadeHandler(TelnetHandler):
                 await self.send_line("Solve not implemented for this game.")
             return
 
+        # Lights Out specific command
+        if cmd_enum == GameCommand.PRESS:
+            if len(parts) != 3:
+                await self.send_line("Usage: press <row> <col>")
+                await self.send_line("Example: press 2 3")
+                return
+
+            try:
+                row = int(parts[1])
+                col = int(parts[2])
+
+                result = await self.current_game.validate_move(row, col)
+                await self.send_line(result.message)
+
+                if result.success:
+                    await self.display_puzzle()
+
+                    if self.current_game.is_complete():
+                        await self.send_line("\n" + "=" * 50)
+                        await self.send_line("CONGRATULATIONS! ALL LIGHTS OFF!")
+                        await self.send_line("=" * 50)
+                        await self.send_line(self.current_game.get_stats())
+                        await self.send_line("\nType 'menu' to play another game.")
+                        await self.send_line("=" * 50 + "\n")
+
+            except ValueError:
+                await self.send_line("Invalid input. Use numbers only.")
+            return
+
         # Logic Grid specific commands
         if cmd_enum == GameCommand.CONNECT:
             if len(parts) != 5:
