@@ -173,9 +173,10 @@ class TestLightsOutGame:
         await game.generate_puzzle()
 
         stats = game.get_stats()
-        assert "Moves made:" in stats
+        assert "Moves" in stats
         assert "Lights ON:" in stats
-        assert "Grid size:" in stats
+        assert "Grid" in stats
+        assert "Seed:" in stats
 
     async def test_moves_counter(self):
         """Test that moves are counted correctly."""

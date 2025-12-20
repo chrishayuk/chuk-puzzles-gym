@@ -81,7 +81,7 @@ class TestKillerSudokuGame:
 
     async def test_check_cage_constraints_duplicate(self):
         """Test cage constraint with duplicate values."""
-        from puzzle_arcade_server.models.games import Cage
+        from puzzle_arcade_server.games.killer_sudoku.models import Cage
 
         game = KillerSudokuGame("easy")
         game.cages = [
@@ -97,7 +97,7 @@ class TestKillerSudokuGame:
 
     async def test_check_cage_constraints_exceed_sum(self):
         """Test cage constraint when sum is exceeded."""
-        from puzzle_arcade_server.models.games import Cage
+        from puzzle_arcade_server.games.killer_sudoku.models import Cage
 
         game = KillerSudokuGame("easy")
         game.cages = [
@@ -113,7 +113,7 @@ class TestKillerSudokuGame:
 
     async def test_check_cage_constraints_correct(self):
         """Test cage constraint with correct values."""
-        from puzzle_arcade_server.models.games import Cage
+        from puzzle_arcade_server.games.killer_sudoku.models import Cage
 
         game = KillerSudokuGame("easy")
         game.cages = [
@@ -182,7 +182,7 @@ class TestKillerSudokuGame:
 
     async def test_is_complete_filled_correct(self):
         """Test completion check with correctly filled grid."""
-        from puzzle_arcade_server.models.games import Cage
+        from puzzle_arcade_server.games.killer_sudoku.models import Cage
 
         game = KillerSudokuGame("easy")
         # Create a simple valid grid
@@ -268,9 +268,10 @@ class TestKillerSudokuGame:
         await game.generate_puzzle()
 
         stats = game.get_stats()
-        assert "Moves made:" in stats
-        assert "Empty cells:" in stats
-        assert "Total cages:" in stats
+        assert "Moves:" in stats or "Moves made:" in stats
+        assert "Empty" in stats
+        assert "cages" in stats.lower()
+        assert "Seed:" in stats
 
     async def test_solve(self):
         """Test puzzle solving."""

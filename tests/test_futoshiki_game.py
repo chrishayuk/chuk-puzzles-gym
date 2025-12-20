@@ -205,8 +205,9 @@ class TestFutoshikiGame:
         await game.generate_puzzle()
 
         stats = game.get_stats()
-        assert "Moves made" in stats
+        assert "Moves:" in stats or "Moves made:" in stats
         assert "Inequalities" in stats
+        assert "Seed:" in stats
 
     async def test_is_valid_move_with_grid_param(self):
         """Test is_valid_move with explicit grid parameter."""

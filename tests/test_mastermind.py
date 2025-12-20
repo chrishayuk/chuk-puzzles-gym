@@ -258,9 +258,10 @@ class TestMastermindGame:
         await game.generate_puzzle()
 
         stats = game.get_stats()
-        assert "Guesses made:" in stats
-        assert "Code length:" in stats
+        assert "Guesses:" in stats or "Guesses made:" in stats
+        assert "Code:" in stats or "Code length:" in stats
         assert "Colors:" in stats
+        assert "Seed:" in stats
 
     async def test_moves_counter(self):
         """Test that moves are counted correctly."""

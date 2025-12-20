@@ -28,7 +28,8 @@ class GameCommand(str, Enum):
     MENU = "menu"
     M = "m"
     MODE = "mode"
-    # Game-specific commands
+    SEED = "seed"
+    # Game-specific commands (kept here for server command parsing)
     PLACE = "place"
     CLEAR = "clear"
     PRESS = "press"
@@ -46,50 +47,6 @@ class GameCommand(str, Enum):
     SHADE = "shade"
     BRIDGE = "bridge"
     MOVE = "move"
-
-
-class MinesweeperAction(str, Enum):
-    """Actions for Minesweeper game."""
-
-    REVEAL = "reveal"
-    R = "r"
-    FLAG = "flag"
-    F = "f"
-
-
-class KnapsackAction(str, Enum):
-    """Actions for Knapsack game."""
-
-    SELECT = "select"
-    DESELECT = "deselect"
-
-
-class SchedulerAction(str, Enum):
-    """Actions for Scheduler game."""
-
-    ASSIGN = "assign"
-    UNASSIGN = "unassign"
-
-
-class NurikabeColor(str, Enum):
-    """Colors for Nurikabe cells."""
-
-    WHITE = "white"
-    W = "w"
-    BLACK = "black"
-    B = "b"
-    CLEAR = "clear"
-    C = "c"
-
-
-class ArithmeticOperation(str, Enum):
-    """Arithmetic operations for KenKen cages."""
-
-    ADD = "+"
-    SUBTRACT = "-"
-    MULTIPLY = "*"
-    DIVIDE = "/"
-    NONE = ""  # For single-cell cages
 
 
 class CellState(IntEnum):

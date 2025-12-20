@@ -305,9 +305,10 @@ class TestSlitherlinkGame:
         await game.generate_puzzle()
 
         stats = game.get_stats()
-        assert "Moves made:" in stats
-        assert "Lines drawn:" in stats
+        assert "Moves:" in stats or "Moves made:" in stats
+        assert "Lines" in stats
         assert "Clues:" in stats
+        assert "Seed:" in stats
 
     async def test_moves_counter(self):
         """Test that moves are counted correctly."""

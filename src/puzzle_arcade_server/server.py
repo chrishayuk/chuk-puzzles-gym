@@ -17,8 +17,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "chuk-protocol-
 from chuk_protocol_server.handlers.telnet_handler import TelnetHandler
 from chuk_protocol_server.servers.telnet_server import TelnetServer
 
-from .base.puzzle_game import PuzzleGame
-from .games import AVAILABLE_GAMES
+from .games import AVAILABLE_GAMES, GAME_COMMAND_HANDLERS
+from .games._base import GameCommandHandler, PuzzleGame
 from .models import DifficultyLevel, GameCommand, OutputMode
 
 # Configure logging
@@ -34,6 +34,7 @@ class ArcadeHandler(TelnetHandler):
         """Initialize state when a client connects."""
         await super().on_connect()
         self.current_game: PuzzleGame | None = None
+        self.game_handler: GameCommandHandler | None = None
         self.in_menu = True
         self.output_mode = OutputMode.NORMAL
 
@@ -52,10 +53,13 @@ class ArcadeHandler(TelnetHandler):
             await self.send_line(f"  {idx}) {temp_game.name:15s} - {temp_game.description}")
 
         await self.send_line("\nCommands:")
-        await self.send_line("  <number>  - Select game by number")
-        await self.send_line("  <name>    - Select game by name (e.g., 'sudoku')")
-        await self.send_line("  help      - Show this menu again")
-        await self.send_line("  quit      - Exit the server")
+        await self.send_line("  <number> [difficulty] [seed]  - Select by number")
+        await self.send_line("  <name> [difficulty] [seed]    - Select by name")
+        await self.send_line("  help                          - Show this menu again")
+        await self.send_line("  quit                          - Exit the server")
+        await self.send_line("\nExamples:")
+        await self.send_line("  sudoku hard          - Random hard Sudoku puzzle")
+        await self.send_line("  sudoku hard 12345    - Specific puzzle (shareable)")
         await self.send_line("=" * 50 + "\n")
 
     async def show_game_help(self) -> None:
@@ -86,12 +90,13 @@ class ArcadeHandler(TelnetHandler):
         await self.send_line("=" * 50)
         await self.send_line("")
 
-    async def start_game(self, game_id: str, difficulty: str = "easy") -> None:
+    async def start_game(self, game_id: str, difficulty: str = "easy", seed: int | None = None) -> None:
         """Start a specific game.
 
         Args:
             game_id: The game identifier (e.g., 'sudoku', 'kenken')
             difficulty: Game difficulty (easy, medium, hard)
+            seed: Optional seed for deterministic puzzle generation
         """
         game_class = AVAILABLE_GAMES.get(game_id.lower())
         if not game_class:
@@ -104,17 +109,26 @@ class ArcadeHandler(TelnetHandler):
             await self.send_line(f"Invalid difficulty. Choose from: {', '.join(valid_difficulties)}")
             difficulty = DifficultyLevel.EASY.value
 
-        # Create and initialize the game
-        self.current_game = game_class(difficulty)  # type: ignore[abstract]
+        # Create and initialize the game with optional seed
+        self.current_game = game_class(difficulty, seed=seed)  # type: ignore[abstract]
         await self.current_game.generate_puzzle()
         self.in_menu = False
 
-        logger.info(f"Started {game_id} ({difficulty}) for {self.addr}")
+        # Set up command handler if available for this game
+        handler_class = GAME_COMMAND_HANDLERS.get(game_id.lower())
+        if handler_class:
+            self.game_handler = handler_class(self.current_game)
+        else:
+            self.game_handler = None
+
+        seed_info = f", seed={seed}" if seed is not None else ""
+        logger.info(f"Started {game_id} ({difficulty}{seed_info}) for {self.addr}")
 
         # Show game header
         await self.send_line("")
         await self.send_line("=" * 50)
         await self.send_line(f"{self.current_game.name.upper()} - {difficulty.upper()} MODE")
+        await self.send_line(f"Seed: {self.current_game.seed}")
         await self.send_line("=" * 50)
 
         # Send rules line by line, stripping trailing empty lines
@@ -188,14 +202,37 @@ class ArcadeHandler(TelnetHandler):
         except ValueError:
             pass  # Not a GameCommand enum, continue to game selection
 
+        # Helper to parse difficulty and seed from parts
+        def parse_game_args(parts: list[str]) -> tuple[str, int | None]:
+            """Parse difficulty and optional seed from command parts.
+
+            Args:
+                parts: Command parts after game name/number
+
+            Returns:
+                Tuple of (difficulty, seed or None)
+            """
+            difficulty = "easy"
+            seed = None
+
+            if len(parts) >= 1:
+                difficulty = parts[0]
+            if len(parts) >= 2:
+                try:
+                    seed = int(parts[1])
+                except ValueError:
+                    pass  # Ignore invalid seed, will generate random
+
+            return difficulty, seed
+
         # Try to parse as game number
         if cmd.isdigit():
             game_idx = int(cmd) - 1
             game_list = list(AVAILABLE_GAMES.keys())
             if 0 <= game_idx < len(game_list):
                 game_id = game_list[game_idx]
-                difficulty = parts[1] if len(parts) > 1 else "easy"
-                await self.start_game(game_id, difficulty)
+                difficulty, seed = parse_game_args(parts[1:])
+                await self.start_game(game_id, difficulty, seed)
                 return
             else:
                 await self.send_line(f"Invalid game number. Choose 1-{len(game_list)}.")
@@ -203,8 +240,8 @@ class ArcadeHandler(TelnetHandler):
 
         # Try to parse as game name
         if cmd in AVAILABLE_GAMES:
-            difficulty = parts[1] if len(parts) > 1 else "easy"
-            await self.start_game(cmd, difficulty)
+            difficulty, seed = parse_game_args(parts[1:])
+            await self.start_game(cmd, difficulty, seed)
             return
 
         await self.send_line("Unknown command. Type 'help' to see available options.")
@@ -243,6 +280,7 @@ class ArcadeHandler(TelnetHandler):
         if cmd_enum in (GameCommand.MENU, GameCommand.M):
             await self.send_line("Returning to main menu...\n")
             self.current_game = None
+            self.game_handler = None
             self.in_menu = True
             await self.show_main_menu()
             return
@@ -267,6 +305,13 @@ class ArcadeHandler(TelnetHandler):
                 await self.send_line(f"Output mode set to: {new_mode.value}")
             except ValueError:
                 await self.send_line(f"Invalid mode '{mode_str}'. Choose: normal, agent, or compact")
+            return
+
+        if cmd_enum == GameCommand.SEED:
+            await self.send_line(f"Current puzzle seed: {self.current_game.seed}")
+            await self.send_line("To replay this exact puzzle, use:")
+            game_name = self.current_game.name.lower().replace(" ", "_")
+            await self.send_line(f"  {game_name} {self.current_game.difficulty.value} {self.current_game.seed}")
             return
 
         if cmd_enum == GameCommand.HINT:
@@ -302,7 +347,24 @@ class ArcadeHandler(TelnetHandler):
                 await self.send_line("Reset not available for this game.")
             return
 
-        # Game-specific commands (Sudoku example)
+        # Delegate to game-specific command handler if available
+        if self.game_handler and cmd_enum in self.game_handler.supported_commands:
+            result = await self.game_handler.handle_command(cmd_enum, parts[1:])
+            await self.send_line(result.result.message)
+
+            if result.should_display:
+                await self.display_puzzle()
+
+            if result.is_game_over:
+                await self.send_line("\n" + "=" * 50)
+                await self.send_line("CONGRATULATIONS! YOU SOLVED IT!")
+                await self.send_line("=" * 50)
+                await self.send_line(self.current_game.get_stats())
+                await self.send_line("\nType 'menu' to play another game.")
+                await self.send_line("=" * 50 + "\n")
+            return
+
+        # Legacy game-specific commands (for non-migrated games)
         if cmd_enum == GameCommand.PLACE:
             if len(parts) != 4:
                 await self.send_line("Usage: place <row> <col> <num>")

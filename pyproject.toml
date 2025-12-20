@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "puzzle-arcade-server"
-version = "0.4.3"
+version = "0.5"
 description = "Multi-game puzzle server for telnet - LLMs with MCP solvers welcome!"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -49,7 +49,9 @@ Documentation = "https://github.com/chrishayuk/puzzle-arcade-server#readme"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
-packages = ["puzzle_arcade_server", "puzzle_arcade_server.base", "puzzle_arcade_server.games", "puzzle_arcade_server.models", "puzzle_arcade_server.utils"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [tool.setuptools.package-data]
 "*" = ["*.yaml", "*.yml"]

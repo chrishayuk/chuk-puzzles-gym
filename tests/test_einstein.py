@@ -224,7 +224,7 @@ class TestEinsteinGame:
         await game.generate_puzzle()
 
         # Fill all houses but with wrong values
-        from puzzle_arcade_server.models.games import HouseAssignment
+        from puzzle_arcade_server.games.einstein.models import HouseAssignment
 
         for i in range(game.num_houses):
             game.assignments[i] = HouseAssignment(

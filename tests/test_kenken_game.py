@@ -202,8 +202,8 @@ class TestKenKenGame:
         stats = game.get_stats()
         assert "Moves made" in stats
         assert "Empty cells" in stats
-        assert "Grid size" in stats
-        assert "Inequalities" in stats or "size" in stats  # Different games have different stats
+        assert "Grid" in stats
+        assert "Seed:" in stats
 
     async def test_generate_inequalities(self):
         """Test inequality generation."""

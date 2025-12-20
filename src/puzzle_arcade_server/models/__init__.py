@@ -1,84 +1,27 @@
-"""Pydantic models and enums for the Puzzle Arcade server."""
+"""Pydantic models and enums for the Puzzle Arcade server.
+
+Game-specific models and enums have been moved to their respective game folders.
+"""
 
 from .base import GridPosition, MoveResult
-from .config import (
-    BinaryConfig,
-    FillominoConfig,
-    FutoshikiConfig,
-    GameConfig,
-    HidatoConfig,
-    KakuroConfig,
-    KenKenConfig,
-    KillerSudokuConfig,
-    KnapsackConfig,
-    LightsOutConfig,
-    LogicGridConfig,
-    MastermindConfig,
-    MinesweeperConfig,
-    NonogramConfig,
-    NurikabeConfig,
-    SchedulerConfig,
-    SlitherlinkConfig,
-    SokobanConfig,
-    StarBattleConfig,
-    SudokuConfig,
-    TentsConfig,
-)
+from .config import GameConfig
 from .enums import (
-    ArithmeticOperation,
     CellState,
     ConnectionState,
     DifficultyLevel,
     GameCommand,
-    KnapsackAction,
-    MinesweeperAction,
-    NurikabeColor,
     OutputMode,
-    SchedulerAction,
 )
-from .games import Cage, HouseAssignment, Item, LogicGridCategories, PersonAttributes, Task
 
 __all__ = [
     # Enums
-    "ArithmeticOperation",
     "CellState",
     "ConnectionState",
     "DifficultyLevel",
     "GameCommand",
-    "KnapsackAction",
-    "MinesweeperAction",
-    "NurikabeColor",
     "OutputMode",
-    "SchedulerAction",
     # Base models
     "MoveResult",
     "GridPosition",
     "GameConfig",
-    "LightsOutConfig",
-    "FutoshikiConfig",
-    "SudokuConfig",
-    "BinaryConfig",
-    "MastermindConfig",
-    "KakuroConfig",
-    "NonogramConfig",
-    "KnapsackConfig",
-    "SchedulerConfig",
-    "MinesweeperConfig",
-    "LogicGridConfig",
-    "SlitherlinkConfig",
-    "KenKenConfig",
-    "KillerSudokuConfig",
-    "NurikabeConfig",
-    "HidatoConfig",
-    "TentsConfig",
-    "FillominoConfig",
-    "StarBattleConfig",
-    "SokobanConfig",
-    # Game-specific models
-    "Task",
-    "Item",
-    "Cage",
-    "HouseAssignment",
-    "LogicGridCategories",
-    "PersonAttributes",
 ]

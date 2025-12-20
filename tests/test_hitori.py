@@ -189,7 +189,8 @@ class TestHitoriGame:
         """Test stats retrieval."""
         game = HitoriGame("easy")
         stats = game.get_stats()
-        assert "Moves made" in stats
+        assert "Moves" in stats
+        assert "Seed:" in stats
 
     async def test_moves_counter(self):
         """Test that moves are counted."""

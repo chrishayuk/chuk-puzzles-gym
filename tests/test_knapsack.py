@@ -3,7 +3,7 @@
 import pytest
 
 from puzzle_arcade_server.games.knapsack import KnapsackGame
-from puzzle_arcade_server.models import Item
+from puzzle_arcade_server.games.knapsack.models import Item
 
 
 class TestKnapsackGame:

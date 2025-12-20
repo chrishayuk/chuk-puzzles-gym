@@ -225,7 +225,8 @@ class TestBinaryPuzzleGame:
         stats = game.get_stats()
         assert "Moves made" in stats
         assert "Empty cells" in stats
-        assert "Grid size" in stats
+        assert "Grid" in stats
+        assert "Seed:" in stats
 
     async def test_clear_with_value_2(self):
         """Test clearing with value 2."""

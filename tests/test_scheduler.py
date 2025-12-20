@@ -63,7 +63,7 @@ class TestSchedulerGame:
 
     async def test_assign_task_success(self):
         """Test successfully assigning a task."""
-        from puzzle_arcade_server.models.games import Task
+        from puzzle_arcade_server.games.scheduler.models import Task
 
         game = SchedulerGame("easy")
         game.tasks = [
@@ -84,7 +84,7 @@ class TestSchedulerGame:
 
     async def test_assign_task_with_dependency(self):
         """Test assigning a task that has a dependency."""
-        from puzzle_arcade_server.models.games import Task
+        from puzzle_arcade_server.games.scheduler.models import Task
 
         game = SchedulerGame("easy")
         game.tasks = [
@@ -114,7 +114,7 @@ class TestSchedulerGame:
 
     async def test_assign_task_too_early_for_dependency(self):
         """Test assigning a task before its dependency finishes."""
-        from puzzle_arcade_server.models.games import Task
+        from puzzle_arcade_server.games.scheduler.models import Task
 
         game = SchedulerGame("easy")
         game.tasks = [
@@ -134,7 +134,7 @@ class TestSchedulerGame:
 
     async def test_worker_conflict(self):
         """Test that worker conflicts are detected."""
-        from puzzle_arcade_server.models.games import Task
+        from puzzle_arcade_server.games.scheduler.models import Task
 
         game = SchedulerGame("easy")
         game.tasks = [
@@ -154,7 +154,7 @@ class TestSchedulerGame:
 
     async def test_worker_available_after_task(self):
         """Test that worker is available after a task finishes."""
-        from puzzle_arcade_server.models.games import Task
+        from puzzle_arcade_server.games.scheduler.models import Task
 
         game = SchedulerGame("easy")
         game.tasks = [
@@ -174,7 +174,7 @@ class TestSchedulerGame:
 
     async def test_reassign_task(self):
         """Test reassigning a task to different worker/time."""
-        from puzzle_arcade_server.models.games import Task
+        from puzzle_arcade_server.games.scheduler.models import Task
 
         game = SchedulerGame("easy")
         game.tasks = [Task(id=0, name="Task1", duration=3, dependencies=[])]
@@ -191,7 +191,7 @@ class TestSchedulerGame:
 
     async def test_unassign_task(self):
         """Test unassigning a task."""
-        from puzzle_arcade_server.models.games import Task
+        from puzzle_arcade_server.games.scheduler.models import Task
 
         game = SchedulerGame("easy")
         game.tasks = [
@@ -211,7 +211,7 @@ class TestSchedulerGame:
 
     async def test_unassign_task_not_assigned(self):
         """Test unassigning a task that's not assigned."""
-        from puzzle_arcade_server.models.games import Task
+        from puzzle_arcade_server.games.scheduler.models import Task
 
         game = SchedulerGame("easy")
         game.tasks = [Task(id=0, name="Task1", duration=3, dependencies=[])]
@@ -267,7 +267,7 @@ class TestSchedulerGame:
 
     async def test_get_makespan(self):
         """Test makespan calculation."""
-        from puzzle_arcade_server.models.games import Task
+        from puzzle_arcade_server.games.scheduler.models import Task
 
         game = SchedulerGame("easy")
         game.tasks = [
@@ -284,7 +284,7 @@ class TestSchedulerGame:
 
     async def test_get_makespan_empty(self):
         """Test makespan with no tasks scheduled."""
-        from puzzle_arcade_server.models.games import Task
+        from puzzle_arcade_server.games.scheduler.models import Task
 
         game = SchedulerGame("easy")
         game.tasks = [Task(id=0, name="Task1", duration=3, dependencies=[])]
@@ -316,7 +316,7 @@ class TestSchedulerGame:
 
     async def test_is_complete_suboptimal_schedule(self):
         """Test completion when all tasks scheduled but not optimally."""
-        from puzzle_arcade_server.models.games import Task
+        from puzzle_arcade_server.games.scheduler.models import Task
 
         game = SchedulerGame("easy")
         game.tasks = [
@@ -336,7 +336,7 @@ class TestSchedulerGame:
 
     async def test_get_hint(self):
         """Test hint generation."""
-        from puzzle_arcade_server.models.games import Task
+        from puzzle_arcade_server.games.scheduler.models import Task
 
         game = SchedulerGame("easy")
         game.tasks = [Task(id=0, name="Task1", duration=3, dependencies=[])]
@@ -349,7 +349,7 @@ class TestSchedulerGame:
 
     async def test_get_hint_already_optimal(self):
         """Test hint when already at optimal solution."""
-        from puzzle_arcade_server.models.games import Task
+        from puzzle_arcade_server.games.scheduler.models import Task
 
         game = SchedulerGame("easy")
         game.tasks = [Task(id=0, name="Task1", duration=3, dependencies=[])]
@@ -456,7 +456,7 @@ class TestSchedulerGame:
 
     async def test_chain_dependencies(self):
         """Test scheduling with chain dependencies (A -> B -> C)."""
-        from puzzle_arcade_server.models.games import Task
+        from puzzle_arcade_server.games.scheduler.models import Task
 
         game = SchedulerGame("easy")
         game.tasks = [
@@ -479,7 +479,7 @@ class TestSchedulerGame:
 
     async def test_parallel_independent_tasks(self):
         """Test that independent tasks can run in parallel."""
-        from puzzle_arcade_server.models.games import Task
+        from puzzle_arcade_server.games.scheduler.models import Task
 
         game = SchedulerGame("easy")
         game.tasks = [

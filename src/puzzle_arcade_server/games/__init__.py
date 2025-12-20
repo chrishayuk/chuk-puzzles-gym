@@ -23,6 +23,7 @@ from .slitherlink import SlitherlinkGame
 from .sokoban import SokobanGame
 from .star_battle import StarBattleGame
 from .sudoku import SudokuGame
+from .sudoku.commands import SudokuCommandHandler
 from .tents import TentsGame
 
 # Registry of available games
@@ -58,6 +59,11 @@ AVAILABLE_GAMES = {
     "minesweeper": MinesweeperGame,
 }
 
+# Registry of game command handlers (games that have moved command handling out of server)
+GAME_COMMAND_HANDLERS = {
+    "sudoku": SudokuCommandHandler,
+}
+
 __all__ = [
     "SudokuGame",
     "KenKenGame",
@@ -84,4 +90,5 @@ __all__ = [
     "EinsteinGame",
     "MinesweeperGame",
     "AVAILABLE_GAMES",
+    "GAME_COMMAND_HANDLERS",
 ]

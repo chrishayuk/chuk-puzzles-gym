@@ -6,7 +6,7 @@ from pathlib import Path
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from puzzle_arcade_server.base.puzzle_game import PuzzleGame
+from puzzle_arcade_server.games._base import PuzzleGame
 
 
 class ConcretePuzzleGame(PuzzleGame):
@@ -18,7 +18,7 @@ class ConcretePuzzleGame(PuzzleGame):
 
     async def validate_move(self, *args):
         """Validate a test move."""
-        from puzzle_arcade_server.base.puzzle_game import MoveResult
+        from puzzle_arcade_server.models import MoveResult
 
         return MoveResult(success=True, message="Valid move")
 
@@ -58,21 +58,36 @@ class TestPuzzleGame:
 
     async def test_initialization(self):
         """Test game initialization."""
+        from puzzle_arcade_server.models import DifficultyLevel
+
         game = ConcretePuzzleGame("medium")
-        assert game.difficulty == "medium"
+        assert game.difficulty == DifficultyLevel.MEDIUM
         assert game.moves_made == 0
         assert game.game_started is False
+        assert game.seed is not None
+        assert game._rng is not None
+
+    async def test_deterministic_seed(self):
+        """Test that the same seed produces the same RNG state."""
+        game1 = ConcretePuzzleGame("easy", seed=12345)
+        game2 = ConcretePuzzleGame("easy", seed=12345)
+
+        # Same seed should produce same random values
+        assert game1._rng.randint(0, 100) == game2._rng.randint(0, 100)
+        assert game1._rng.random() == game2._rng.random()
 
     async def test_get_stats(self):
         """Test get_stats method."""
-        game = ConcretePuzzleGame("easy")
+        game = ConcretePuzzleGame("easy", seed=42)
         stats = game.get_stats()
-        assert stats == "Moves made: 0"
+        assert "Moves made: 0" in stats
+        assert "Seed: 42" in stats
 
         # Increment moves and test again
         game.moves_made = 5
         stats = game.get_stats()
-        assert stats == "Moves made: 5"
+        assert "Moves made: 5" in stats
+        assert "Seed: 42" in stats
 
     async def test_abstract_methods(self):
         """Test that PuzzleGame is abstract and requires implementation."""

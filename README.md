@@ -52,7 +52,8 @@ Once connected, type `help` to see available games, or `sudoku easy` to start pl
 - **Hint system** for when you're stuck
 - **Solution checker** and auto-solver for all games
 - **Clean ASCII art grids** - perfectly aligned for easy parsing
-- **Comprehensive test suite** (716 tests, 94% coverage)
+- **Deterministic seeding** - Replay any puzzle with the same seed
+- **Comprehensive test suite** (832 tests, 95% coverage)
 - **Modern Python best practices:**
   - **Pydantic v2 native** - All models use ConfigDict for type safety
   - **Async native** - Full async/await support throughout
@@ -156,9 +157,6 @@ resource_games = [
 | **Boolean SAT** | Lights Out | Feature dependencies, Toggle systems |
 | **Cage Sums** | Killer Sudoku, Kakuro | Team budgets, Grouped constraints |
 | **AllDifferent** | Sudoku, KenKen | Resource uniqueness, Assignment problems |
-
-**See [CURRICULUM.md](CURRICULUM.md) for a structured learning path through constraint patterns**
-**See [DEMOS.md](DEMOS.md) for complete CHUK + MCP solver integration examples**
 
 ## Quick Start
 
@@ -473,40 +471,66 @@ This server is built on the [chuk-protocol-server](https://github.com/chrishayuk
 
 ### Game Architecture
 
-All games extend the `PuzzleGame` abstract base class:
+Each game is a **self-contained module** with all logic co-located:
+
+```
+games/
+├── _base/              # Base classes
+│   ├── game.py         # PuzzleGame ABC
+│   └── commands.py     # GameCommandHandler ABC
+├── sudoku/
+│   ├── __init__.py     # Exports SudokuGame
+│   ├── game.py         # Game logic
+│   ├── config.py       # SudokuConfig
+│   └── commands.py     # Command handler
+├── minesweeper/
+│   ├── __init__.py
+│   ├── game.py
+│   └── config.py
+└── ... (24 games total)
+```
+
+All games extend the `PuzzleGame` abstract base class with **deterministic seeding**:
 
 ```python
+from puzzle_arcade_server.games._base import PuzzleGame
+
 class PuzzleGame(ABC):
+    def __init__(self, difficulty: str = "easy", seed: int | None = None):
+        self.seed = seed if seed is not None else random.randint(0, 2**32 - 1)
+        self._rng = random.Random(self.seed)  # Deterministic RNG
+        # ...
+
     @property
     @abstractmethod
     def name(self) -> str: ...
 
     @property
     @abstractmethod
-    def description(self) -> str: ...
+    def constraint_types(self) -> list[str]: ...
+
+    @property
+    @abstractmethod
+    def business_analogies(self) -> list[str]: ...
 
     @abstractmethod
-    def generate_puzzle(self) -> None: ...
+    async def generate_puzzle(self) -> None: ...
 
     @abstractmethod
-    def validate_move(self, *args) -> tuple[bool, str]: ...
+    async def validate_move(self, *args) -> MoveResult: ...
 
     @abstractmethod
     def is_complete(self) -> bool: ...
 
     @abstractmethod
     def render_grid(self) -> str: ...
-
-    def get_hint(self) -> tuple[Any, str] | None: ...
-    def get_rules(self) -> str: ...
-    def get_commands(self) -> str: ...
 ```
 
 ### Handler Architecture
 
 The `ArcadeHandler` class manages:
 - Menu-driven game selection
-- Command parsing and routing
+- Command parsing and routing (delegating to game-specific handlers)
 - Grid display with proper formatting
 - Game state management per connection
 - Multi-game support
@@ -529,7 +553,7 @@ pip install -e ".[dev]"
 
 ### Testing
 
-The project has comprehensive test coverage (95%, 716 tests):
+The project has comprehensive test coverage (95%, 832 tests):
 
 ```bash
 # Run all tests
@@ -545,39 +569,20 @@ make test-watch
 make serve-coverage
 ```
 
-### Coverage by File
+### Coverage by Module
 
 ```
-src/puzzle_arcade_server/base/puzzle_game.py       92%
-src/puzzle_arcade_server/models/base.py           100%  ✨
-src/puzzle_arcade_server/models/config.py         100%
-src/puzzle_arcade_server/models/enums.py          100%
-src/puzzle_arcade_server/models/games.py          100%
-src/puzzle_arcade_server/games/__init__.py        100%
-src/puzzle_arcade_server/games/lights_out.py      100%
-src/puzzle_arcade_server/games/scheduler.py       100%  ✨
-src/puzzle_arcade_server/games/binary.py           98%
-src/puzzle_arcade_server/games/einstein.py         98%
-src/puzzle_arcade_server/games/knapsack.py         98%
-src/puzzle_arcade_server/games/mastermind.py       98%
-src/puzzle_arcade_server/games/futoshiki.py        98%
-src/puzzle_arcade_server/games/slitherlink.py      98%
-src/puzzle_arcade_server/games/kakuro.py           95%
-src/puzzle_arcade_server/games/nonogram.py         93%
-src/puzzle_arcade_server/games/minesweeper.py      92%
-src/puzzle_arcade_server/games/sudoku.py           92%
-src/puzzle_arcade_server/games/hitori.py           95%
-src/puzzle_arcade_server/games/bridges.py          93%
-src/puzzle_arcade_server/games/shikaku.py          93%
-src/puzzle_arcade_server/games/nurikabe.py         92%
-src/puzzle_arcade_server/games/kenken.py           91%
-src/puzzle_arcade_server/games/logic_grid.py       91%
-src/puzzle_arcade_server/games/killer_sudoku.py    90%
+src/puzzle_arcade_server/games/_base/             95%   # Base classes
+src/puzzle_arcade_server/games/sudoku/            92%   # Sudoku module
+src/puzzle_arcade_server/games/kenken/            91%   # KenKen module
+src/puzzle_arcade_server/games/minesweeper/       92%   # Minesweeper module
+src/puzzle_arcade_server/games/.../               90%+  # All other games
+src/puzzle_arcade_server/models/                 100%   # Pydantic models
 ------------------------------------------------------
-TOTAL                                               95%  🎯
+TOTAL                                              95%  🎯
 ```
 
-**All files now meet the 90%+ coverage threshold!** ✅
+**All modules meet the 90%+ coverage threshold!** ✅
 
 ### Code Quality
 
@@ -597,11 +602,11 @@ The project follows modern Python best practices with a **9.8/10 compliance scor
 - ✅ **Test Coverage** (10/10) - 95% overall, all files ≥90%
 
 #### Quality Metrics
-- **530 tests** - All passing ✅
+- **832 tests** - All passing ✅
 - **95% coverage** - Exceeds 90% threshold ✅
 - **Zero linting errors** - Clean codebase ✅
 - **Full type safety** - MyPy passes ✅
-- **3,700+ statements** - Well-tested and documented
+- **Deterministic seeding** - Reproducible puzzles ✅
 
 ```bash
 # Run all checks (lint + typecheck + test + security)
@@ -721,77 +726,52 @@ puzzle-arcade-server/
 ├── src/
 │   └── puzzle_arcade_server/
 │       ├── __init__.py           # Package initialization
-│       ├── server.py             # Main arcade handler (354 lines)
-│       ├── base/
-│       │   ├── __init__.py       # Base package
-│       │   └── puzzle_game.py    # Abstract base class (35 lines)
-│       ├── games/
-│       │   ├── __init__.py       # Game registry (AVAILABLE_GAMES)
-│       │   ├── sudoku.py         # Sudoku (9×9, 121 lines, 92% coverage)
-│       │   ├── kenken.py         # KenKen (4×4-6×6, 216 lines, 91% coverage)
-│       │   ├── kakuro.py         # Kakuro (5×5-8×8, 134 lines, 95% coverage)
-│       │   ├── binary.py         # Binary (6×6-10×10, 154 lines, 99% coverage)
-│       │   ├── futoshiki.py      # Futoshiki (4×4-6×6, 160 lines, 98% coverage)
-│       │   ├── nonogram.py       # Nonogram (5×5-10×10, 116 lines, 93% coverage)
-│       │   ├── logic_grid.py     # Logic Grid (117 lines, 90% coverage)
-│       │   ├── killer_sudoku.py  # Killer Sudoku (9×9, 404 lines, 93% coverage)
-│       │   ├── lights_out.py     # Lights Out (5×5-7×7, 204 lines, 94% coverage)
-│       │   ├── mastermind.py     # Mastermind (4-6 pegs, 258 lines, 92% coverage)
-│       │   ├── slitherlink.py    # Slitherlink (5×5-10×10, 343 lines, 91% coverage)
-│       │   ├── bridges.py        # Bridges (7×7-11×11, 337 lines, 93% coverage)
-│       │   ├── hitori.py         # Hitori (5×5-9×9, 329 lines, 95% coverage)
-│       │   ├── shikaku.py        # Shikaku (6×6-10×10, 306 lines, 93% coverage)
-│       │   ├── knapsack.py       # Knapsack (5-12 items, 267 lines)
-│       │   ├── scheduler.py      # Task Scheduler (4-8 tasks, 381 lines)
-│       │   ├── nurikabe.py       # Nurikabe (6×6-10×10, 383 lines)
-│       │   ├── einstein.py       # Einstein's Puzzle (5 houses, 290 lines)
-│       │   └── minesweeper.py    # Minesweeper (6×6-10×10, 293 lines)
-│       └── utils/
-│           └── __init__.py       # Utility functions
+│       ├── server.py             # Main arcade handler
+│       ├── constants.py          # Game constants
+│       ├── models/               # Pydantic models
+│       │   ├── __init__.py
+│       │   ├── base.py           # GridPosition, MoveResult
+│       │   ├── config.py         # Base GameConfig
+│       │   ├── enums.py          # DifficultyLevel, GameCommand, etc.
+│       │   └── games.py          # Game-specific models (Cage, Task, etc.)
+│       └── games/                # Self-contained game modules
+│           ├── __init__.py       # AVAILABLE_GAMES registry
+│           ├── _base/            # Base classes
+│           │   ├── __init__.py
+│           │   ├── game.py       # PuzzleGame ABC
+│           │   └── commands.py   # GameCommandHandler ABC
+│           ├── sudoku/           # Example game module
+│           │   ├── __init__.py   # Exports SudokuGame
+│           │   ├── game.py       # SudokuGame class
+│           │   ├── config.py     # SudokuConfig
+│           │   └── commands.py   # SudokuCommandHandler
+│           ├── minesweeper/      # Each game is self-contained
+│           │   ├── __init__.py
+│           │   ├── game.py
+│           │   └── config.py
+│           └── ... (24 games total)
 ├── tests/
-│   ├── test_puzzle_game.py       # Base class tests (4 tests)
-│   ├── test_sudoku_game.py       # Sudoku tests (11 tests)
-│   ├── test_kenken_game.py       # KenKen tests (25 tests)
-│   ├── test_kakuro_game.py       # Kakuro tests (12 tests)
-│   ├── test_binary_game.py       # Binary tests (27 tests)
-│   ├── test_futoshiki_game.py    # Futoshiki tests (25 tests)
-│   ├── test_nonogram_game.py     # Nonogram tests (12 tests)
-│   ├── test_logic_grid_game.py   # Logic Grid tests (13 tests)
-│   ├── test_killer_sudoku.py     # Killer Sudoku tests (27 tests)
-│   ├── test_lights_out.py        # Lights Out tests (23 tests)
-│   ├── test_mastermind.py        # Mastermind tests (31 tests)
-│   ├── test_slitherlink.py       # Slitherlink tests (33 tests)
-│   ├── test_bridges.py           # Bridges tests (24 tests)
-│   ├── test_hitori.py            # Hitori tests (29 tests)
-│   ├── test_shikaku.py           # Shikaku tests (27 tests)
-│   ├── test_knapsack.py          # Knapsack tests (30+ tests)
-│   ├── test_scheduler.py         # Scheduler tests (35+ tests)
-│   ├── test_nurikabe.py          # Nurikabe tests (40+ tests)
-│   ├── test_einstein.py          # Einstein's Puzzle tests (35+ tests)
-│   └── test_minesweeper.py       # Minesweeper tests (40+ tests)
+│   ├── test_puzzle_game.py       # Base class tests
+│   ├── test_deterministic_seeding.py  # Seeding tests
+│   ├── test_sudoku_game.py       # Sudoku tests
+│   ├── test_minesweeper.py       # Minesweeper tests
+│   └── ... (tests for all 24 games)
 ├── examples/
 │   ├── simple_client.py          # Telnet client example
 │   ├── websocket_client.py       # WebSocket client example
 │   └── README.md                 # Example usage guide
-├── .github/
-│   └── workflows/
-│       ├── test.yml              # Multi-platform CI testing
-│       ├── publish.yml           # PyPI publishing
-│       ├── release.yml           # GitHub releases
-│       └── fly-deploy.yml        # Fly.io deployment
+├── .github/workflows/            # CI/CD workflows
 ├── pyproject.toml                # Modern Python project config
 ├── config.yaml                   # Multi-transport server configuration
 ├── Dockerfile                    # Docker build instructions
 ├── fly.toml                      # Fly.io deployment config
 ├── Makefile                      # Development commands (50+ targets)
-├── MANIFEST.in                   # Package distribution files
 └── README.md                     # This file
 ```
 
 ### Key Statistics
 
-- **Total Lines of Code**: 3,700+ statements in src/
-- **Test Coverage**: 95% overall (716 tests, all passing)
+- **Test Coverage**: 95% overall (832 tests, all passing)
 - **Code Quality Score**: 9.8/10 (near perfect compliance)
 - **Games Implemented**: 24 complete puzzle types
   - 7 Classic Logic Puzzles
@@ -801,8 +781,8 @@ puzzle-arcade-server/
   - 3 Advanced Reasoning Puzzles
 - **Supported Transports**: 4 (Telnet, TCP, WebSocket, WS-Telnet)
 - **Agent-Friendly Mode**: Structured output for AI tools
-- **Make Targets**: 50+ development commands
-- **All Files**: ≥90% test coverage ✅
+- **Deterministic Seeding**: Reproducible puzzles for testing
+- **All Modules**: ≥90% test coverage ✅
 
 ## Use Cases
 
@@ -843,88 +823,119 @@ Learn about constraint satisfaction problems:
   - Probabilistic reasoning (Minesweeper)
   - And more!
 - **Well-documented code** showing puzzle generation algorithms
-- **Comprehensive tests** (530 tests, 95% coverage) demonstrating validation
+- **Comprehensive tests** (832 tests, 95% coverage) demonstrating validation
+- **Deterministic seeding** - Reproduce any puzzle for debugging/testing
 - **Production-ready** - 9.8/10 code quality score
 - **Type-safe** - Full Pydantic v2 and MyPy compliance
-- **Clean architecture** for adding new puzzles
+- **Modular architecture** - Each game is self-contained in its own folder
 
 ## Adding New Puzzle Games
 
-1. Create a new game file in `src/puzzle_arcade_server/games/`:
+1. Create a new game folder in `src/puzzle_arcade_server/games/`:
+
+```
+games/
+└── my_puzzle/
+    ├── __init__.py     # Export the game class
+    ├── game.py         # Game logic
+    └── config.py       # Game configuration
+```
+
+2. Create the config in `config.py`:
 
 ```python
-from ..base.puzzle_game import PuzzleGame
+from pydantic import Field
+from ...models import DifficultyLevel, GameConfig
+
+class MyPuzzleConfig(GameConfig):
+    grid_size: int = Field(default=5, description="Grid size")
+
+    @classmethod
+    def from_difficulty(cls, difficulty: DifficultyLevel) -> "MyPuzzleConfig":
+        sizes = {DifficultyLevel.EASY: 5, DifficultyLevel.MEDIUM: 7, DifficultyLevel.HARD: 9}
+        return cls(difficulty=difficulty, grid_size=sizes[difficulty])
+```
+
+3. Create the game in `game.py`:
+
+```python
+from .._base import PuzzleGame
+from ...models import MoveResult
+from .config import MyPuzzleConfig
 
 class MyPuzzleGame(PuzzleGame):
+    def __init__(self, difficulty: str = "easy", seed: int | None = None):
+        super().__init__(difficulty, seed)
+        self.config = MyPuzzleConfig.from_difficulty(self.difficulty)
+        # Use self._rng for all randomness (deterministic seeding)
+
     @property
     def name(self) -> str:
         return "My Puzzle"
 
     @property
-    def description(self) -> str:
-        return "A cool puzzle game"
+    def constraint_types(self) -> list[str]:
+        return ["all_different", "sum_constraint"]
 
-    def generate_puzzle(self) -> None:
-        # Generate puzzle with unique solution
-        self.grid = [[0] * self.size for _ in range(self.size)]
-        # ... your generation logic
+    @property
+    def business_analogies(self) -> list[str]:
+        return ["resource_allocation", "scheduling"]
+
+    async def generate_puzzle(self) -> None:
+        # Use self._rng.randint(), self._rng.choice(), etc.
         self.game_started = True
 
-    def validate_move(self, row: int, col: int, num: int) -> tuple[bool, str]:
+    async def validate_move(self, row: int, col: int, num: int) -> MoveResult:
         # Validate and apply move
-        if not self._is_valid(row, col, num):
-            return False, "Invalid move!"
-        self.grid[row][col] = num
-        self.moves_made += 1
-        return True, "Number placed successfully!"
+        return MoveResult(success=True, message="Number placed!")
 
     def is_complete(self) -> bool:
-        # Check if puzzle is solved
         return all(cell != 0 for row in self.grid for cell in row)
 
     def render_grid(self) -> str:
-        # Return ASCII art representation
         return "  | 1 | 2 | 3 |\n" + ...
 
-    def get_rules(self) -> str:
-        return "MY PUZZLE RULES:\n- Rule 1\n- Rule 2"
-
-    def get_commands(self) -> str:
-        return "MY PUZZLE COMMANDS:\n  place <row> <col> <num>"
+    def get_stats(self) -> str:
+        return f"Moves: {self.moves_made} | Seed: {self.seed}"
 ```
 
-2. Register it in `src/puzzle_arcade_server/games/__init__.py`:
+4. Export in `__init__.py`:
+
+```python
+from .game import MyPuzzleGame
+__all__ = ["MyPuzzleGame"]
+```
+
+5. Register in `src/puzzle_arcade_server/games/__init__.py`:
 
 ```python
 from .my_puzzle import MyPuzzleGame
 
 AVAILABLE_GAMES = {
-    "sudoku": SudokuGame,
-    "kenken": KenKenGame,
     # ... other games
-    "mypuzzle": MyPuzzleGame,  # Add your game
+    "mypuzzle": MyPuzzleGame,
 }
 ```
 
-3. Add tests in `tests/test_my_puzzle_game.py`:
+6. Add tests in `tests/test_my_puzzle_game.py`:
 
 ```python
 from puzzle_arcade_server.games.my_puzzle import MyPuzzleGame
 
 class TestMyPuzzleGame:
-    def test_initialization(self):
-        game = MyPuzzleGame("easy")
-        assert game.name == "My Puzzle"
+    async def test_deterministic_seeding(self):
+        game1 = MyPuzzleGame("easy", seed=12345)
+        game2 = MyPuzzleGame("easy", seed=12345)
+        await game1.generate_puzzle()
+        await game2.generate_puzzle()
+        assert game1.render_grid() == game2.render_grid()
 
-    def test_generate_puzzle(self):
-        game = MyPuzzleGame("easy")
-        game.generate_puzzle()
-        assert game.game_started
-
-    # ... more tests (aim for >90% coverage)
+    def test_seed_in_stats(self):
+        game = MyPuzzleGame("easy", seed=42)
+        assert "Seed: 42" in game.get_stats()
 ```
 
-4. Run tests and verify:
+7. Run tests and verify:
 
 ```bash
 make test-cov

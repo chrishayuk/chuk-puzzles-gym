@@ -134,16 +134,9 @@ def example_sudoku_game():
     response = client.receive_response()
     print(response)
 
-    # Select Sudoku
-    print("\n[Selecting Sudoku]")
-    client.send_command("select sudoku")
-    time.sleep(0.5)
-    response = client.receive_response(timeout=2.0)
-    print(response)
-
-    # Start an easy game
-    print("\n[Starting easy game]")
-    client.send_command("start easy")
+    # Start Sudoku game (game name + difficulty in one command)
+    print("\n[Starting Sudoku easy game]")
+    client.send_command("sudoku easy")
     time.sleep(0.5)
     response = client.receive_response(timeout=2.0)
     print(response)
@@ -195,16 +188,9 @@ def example_kenken_game():
     response = client.receive_response()
     print(response)
 
-    # Select KenKen
-    print("\n[Selecting KenKen]")
-    client.send_command("select kenken")
-    time.sleep(0.5)
-    response = client.receive_response(timeout=2.0)
-    print(response)
-
-    # Start a medium game
-    print("\n[Starting medium game]")
-    client.send_command("start medium")
+    # Start KenKen game (game name + difficulty in one command)
+    print("\n[Starting KenKen medium game]")
+    client.send_command("kenken medium")
     time.sleep(0.5)
     response = client.receive_response(timeout=2.0)
     print(response)
@@ -238,32 +224,25 @@ def example_game_selection():
     if not client.connect():
         return
 
-    # Read welcome message
+    # Read welcome message (also shows game list)
     response = client.receive_response()
     print(response)
 
-    # List available games
-    print("\n[Listing available games]")
-    client.send_command("list")
-    time.sleep(0.5)
-    response = client.receive_response(timeout=2.0)
-    print(response)
-
-    # Get help
+    # Get help (shows game list again)
     print("\n[Getting help]")
     client.send_command("help")
     time.sleep(0.3)
     response = client.receive_response(timeout=2.0)
     print(response)
 
-    # Try each game type
-    games = ["sudoku", "kenken", "kakuro", "binary", "futoshiki", "nonogram", "logic_grid"]
+    # Try a few games - start them, show rules, then return to menu
+    games = ["sudoku", "kenken", "kakuro", "binary"]
 
     for game in games:
-        print(f"\n[Selecting {game}]")
-        client.send_command(f"select {game}")
+        print(f"\n[Starting {game}]")
+        client.send_command(f"{game} easy")
         time.sleep(0.3)
-        response = client.receive_response()
+        response = client.receive_response(timeout=2.0)
         print(response)
 
         # Get rules for this game
@@ -273,7 +252,12 @@ def example_game_selection():
         response = client.receive_response()
         print(response)
 
-        time.sleep(0.5)
+        # Return to menu
+        print(f"\n[Returning to menu]")
+        client.send_command("menu")
+        time.sleep(0.3)
+        response = client.receive_response()
+        print(response)
 
     # Disconnect
     client.disconnect()
