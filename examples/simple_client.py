@@ -253,7 +253,7 @@ def example_game_selection():
         print(response)
 
         # Return to menu
-        print(f"\n[Returning to menu]")
+        print("\n[Returning to menu]")
         client.send_command("menu")
         time.sleep(0.3)
         response = client.receive_response()
