@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from ...models import MoveResult
+from ...models import DifficultyProfile, MoveResult
 from .._base import PuzzleGame
 from .config import LightsOutConfig
 
@@ -15,13 +15,13 @@ class LightsOutGame(PuzzleGame):
     Perfect demonstration of boolean XOR constraints.
     """
 
-    def __init__(self, difficulty: str = "easy", seed: int | None = None):
+    def __init__(self, difficulty: str = "easy", seed: int | None = None, **kwargs):
         """Initialize a new Lights Out game.
 
         Args:
             difficulty: Game difficulty level (easy=5x5, medium=6x6, hard=7x7)
         """
-        super().__init__(difficulty, seed)
+        super().__init__(difficulty, seed, **kwargs)
 
         # Use pydantic config based on difficulty
         self.config = LightsOutConfig.from_difficulty(self.difficulty)
@@ -59,6 +59,30 @@ class LightsOutGame(PuzzleGame):
     def complexity_profile(self) -> dict[str, str]:
         """Complexity profile of this puzzle."""
         return {"reasoning_type": "deductive", "search_space": "exponential", "constraint_density": "dense"}
+
+    @property
+    def optimal_steps(self) -> int | None:
+        """Minimum steps = presses needed."""
+        if not hasattr(self, "presses") or not self.presses:
+            return None
+        return sum(1 for r in range(self.size) for c in range(self.size) if self.presses[r][c] == 1)
+
+    @property
+    def difficulty_profile(self) -> "DifficultyProfile":
+        """Difficulty characteristics for Lights Out."""
+        from ...models import DifficultyLevel
+
+        logic_depth = {
+            DifficultyLevel.EASY.value: 2,
+            DifficultyLevel.MEDIUM.value: 3,
+            DifficultyLevel.HARD.value: 4,
+        }.get(self.difficulty.value, 3)
+        return DifficultyProfile(
+            logic_depth=logic_depth,
+            branching_factor=2.0,  # Press or not
+            state_observability=1.0,
+            constraint_density=0.7,
+        )
 
     def _toggle_cell(self, row: int, col: int, grid: list[list[int]]) -> None:
         """Toggle a cell and its neighbors.

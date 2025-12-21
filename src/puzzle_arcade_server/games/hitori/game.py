@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from ...models import MoveResult
+from ...models import DifficultyProfile, MoveResult
 from .._base import PuzzleGame
 
 
@@ -15,16 +15,20 @@ class HitoriGame(PuzzleGame):
     - All unshaded cells form a single connected region
     """
 
-    def __init__(self, difficulty: str = "easy", seed: int | None = None):
+    def __init__(self, difficulty: str = "easy", seed: int | None = None, **kwargs):
         """Initialize a new Hitori game.
 
         Args:
             difficulty: Game difficulty level (easy, medium, hard)
         """
-        super().__init__(difficulty, seed)
+        super().__init__(difficulty, seed, **kwargs)
+
+        from ...models import DifficultyLevel
 
         # Set grid size based on difficulty
-        self.size = {"easy": 5, "medium": 7, "hard": 9}.get(self.difficulty.value, 5)
+        self.size = {DifficultyLevel.EASY.value: 5, DifficultyLevel.MEDIUM.value: 7, DifficultyLevel.HARD.value: 9}.get(
+            self.difficulty.value, 5
+        )
 
         # Grid stores the numbers
         self.grid: list[list[int]] = [[0 for _ in range(self.size)] for _ in range(self.size)]
@@ -59,6 +63,30 @@ class HitoriGame(PuzzleGame):
     def complexity_profile(self) -> dict[str, str]:
         """Complexity profile of this puzzle."""
         return {"reasoning_type": "deductive", "search_space": "medium", "constraint_density": "moderate"}
+
+    @property
+    def optimal_steps(self) -> int | None:
+        """Minimum steps = cells to shade."""
+        if not hasattr(self, "solution") or not self.solution:
+            return None
+        return sum(1 for r in range(self.size) for c in range(self.size) if self.solution[r][c])
+
+    @property
+    def difficulty_profile(self) -> "DifficultyProfile":
+        """Difficulty characteristics for Hitori."""
+        from ...models import DifficultyLevel
+
+        logic_depth = {
+            DifficultyLevel.EASY.value: 2,
+            DifficultyLevel.MEDIUM.value: 4,
+            DifficultyLevel.HARD.value: 5,
+        }.get(self.difficulty.value, 3)
+        return DifficultyProfile(
+            logic_depth=logic_depth,
+            branching_factor=2.0,  # Shade or not
+            state_observability=1.0,
+            constraint_density=0.5,
+        )
 
     def _is_connected(self, grid: list[list[bool]]) -> bool:
         """Check if all unshaded cells are connected.
@@ -142,9 +170,13 @@ class HitoriGame(PuzzleGame):
                         self.grid[r][c1], self.grid[r][c2] = self.grid[r][c2], self.grid[r][c1]
 
             # Step 3: Create duplicates strategically
-            num_duplicates = {"easy": self.size, "medium": self.size * 2, "hard": self.size * 3}.get(
-                self.difficulty.value, self.size
-            )
+            from ...models import DifficultyLevel
+
+            num_duplicates = {
+                DifficultyLevel.EASY.value: self.size,
+                DifficultyLevel.MEDIUM.value: self.size * 2,
+                DifficultyLevel.HARD.value: self.size * 3,
+            }.get(self.difficulty.value, self.size)
 
             # Track which cells we've modified to avoid over-duplication
             modified_cells = set()

@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from ...models import MoveResult
+from ...models import DifficultyProfile, MoveResult
 from .._base import PuzzleGame
 from .config import SokobanConfig
 
@@ -17,13 +17,13 @@ class SokobanGame(PuzzleGame):
     - Goal: Get all boxes onto goal positions
     """
 
-    def __init__(self, difficulty: str = "easy", seed: int | None = None):
+    def __init__(self, difficulty: str = "easy", seed: int | None = None, **kwargs):
         """Initialize a new Sokoban game.
 
         Args:
             difficulty: Game difficulty level (easy=6x6, medium=8x8, hard=10x10)
         """
-        super().__init__(difficulty, seed)
+        super().__init__(difficulty, seed, **kwargs)
 
         # Use pydantic config based on difficulty
         self.config = SokobanConfig.from_difficulty(self.difficulty)
@@ -61,6 +61,46 @@ class SokobanGame(PuzzleGame):
     def complexity_profile(self) -> dict[str, str]:
         """Complexity profile of this puzzle."""
         return {"reasoning_type": "optimization", "search_space": "exponential", "constraint_density": "sparse"}
+
+    @property
+    def optimal_steps(self) -> int | None:
+        """Minimum steps estimate = box pushes + player repositioning moves."""
+        if not hasattr(self, "goals") or not self.goals:
+            return None
+        # Find all boxes in the grid (2 = box, 5 = box on goal)
+        boxes = []
+        for r in range(self.size):
+            for c in range(self.size):
+                if self.grid[r][c] in (2, 5):
+                    boxes.append((r, c))
+        if not boxes:
+            return None
+        # Each box push is 1 move. Player needs to get behind each box.
+        # Estimate: sum of box distances + (num_boxes - 1) for repositioning
+        total_pushes = 0
+        for box in boxes:
+            min_dist = min(abs(box[0] - g[0]) + abs(box[1] - g[1]) for g in self.goals)
+            total_pushes += min_dist
+        # Add repositioning moves between boxes (rough estimate)
+        reposition = max(0, len(boxes) - 1) * 2
+        return total_pushes + reposition
+
+    @property
+    def difficulty_profile(self) -> "DifficultyProfile":
+        """Difficulty characteristics for Sokoban."""
+        from ...models import DifficultyLevel
+
+        logic_depth = {
+            DifficultyLevel.EASY.value: 3,
+            DifficultyLevel.MEDIUM.value: 5,
+            DifficultyLevel.HARD.value: 8,
+        }.get(self.difficulty.value, 5)
+        return DifficultyProfile(
+            logic_depth=logic_depth,
+            branching_factor=4.0,  # 4 directions
+            state_observability=1.0,
+            constraint_density=0.4,
+        )
 
     def _is_corner(self, r: int, c: int) -> bool:
         """Check if a position is a corner (would trap a box)."""

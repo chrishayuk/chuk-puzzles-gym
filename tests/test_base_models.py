@@ -78,3 +78,84 @@ class TestMoveResult:
         except (ValidationError, TypeError, AttributeError):
             # Expected - model is frozen
             pass
+
+
+class TestPuzzleGameBase:
+    """Test suite for base PuzzleGame functionality."""
+
+    async def test_record_move_success(self):
+        """Test recording successful moves."""
+        from puzzle_arcade_server.games import AVAILABLE_GAMES
+
+        # Use sudoku as a concrete implementation
+        game = AVAILABLE_GAMES["sudoku"](difficulty="easy", seed=42)
+        await game.generate_puzzle()
+
+        initial_moves = game.moves_made
+        game.record_move((1, 1), True)
+
+        assert game.moves_made == initial_moves + 1
+
+    async def test_record_move_failure(self):
+        """Test recording failed moves."""
+        from puzzle_arcade_server.games import AVAILABLE_GAMES
+
+        game = AVAILABLE_GAMES["sudoku"](difficulty="easy", seed=42)
+        await game.generate_puzzle()
+
+        initial_invalid = game.invalid_moves
+        game.record_move((1, 1), False)
+
+        assert game.invalid_moves == initial_invalid + 1
+
+    async def test_record_move_retry_detection(self):
+        """Test retry detection when moving to same position twice."""
+        from puzzle_arcade_server.games import AVAILABLE_GAMES
+
+        game = AVAILABLE_GAMES["sudoku"](difficulty="easy", seed=42)
+        await game.generate_puzzle()
+
+        # Make two moves to the same position
+        game.record_move((1, 1), True)
+        game.record_move((1, 1), False)  # Same position, should count as retry
+
+        assert game.retries == 1
+
+    async def test_canonical_solution_default(self):
+        """Test that canonical_solution returns None by default."""
+        from puzzle_arcade_server.games import AVAILABLE_GAMES
+
+        game = AVAILABLE_GAMES["sudoku"](difficulty="easy", seed=42)
+        await game.generate_puzzle()
+
+        # Most games don't override this, so it should return None
+        assert game.canonical_solution is None
+
+    async def test_get_solution_efficiency(self):
+        """Test solution efficiency calculation."""
+        from puzzle_arcade_server.games import AVAILABLE_GAMES
+
+        game = AVAILABLE_GAMES["sudoku"](difficulty="easy", seed=42)
+        await game.generate_puzzle()
+
+        # Taking optimal steps = 100% efficiency
+        optimal = game.optimal_steps
+        if optimal:
+            efficiency = game.get_solution_efficiency(optimal)
+            assert efficiency == 1.0
+
+            # Taking twice as many steps = 50% efficiency
+            efficiency = game.get_solution_efficiency(optimal * 2)
+            assert efficiency == 0.5
+
+    async def test_get_solution_efficiency_no_optimal(self):
+        """Test efficiency when optimal_steps is None."""
+        from puzzle_arcade_server.games import AVAILABLE_GAMES
+
+        # Create a game and set optimal_steps to None
+        game = AVAILABLE_GAMES["mastermind"](difficulty="easy", seed=42)
+        await game.generate_puzzle()
+
+        # Mastermind has optimal_steps = 1 due to hints
+        efficiency = game.get_solution_efficiency(5)
+        assert isinstance(efficiency, float)

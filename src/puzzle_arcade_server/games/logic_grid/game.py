@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from ...models import MoveResult
+from ...models import DifficultyProfile, MoveResult
 from .._base import PuzzleGame
 from .config import LogicGridConfig
 from .constants import CATEGORIES, COLORS, DRINKS, PEOPLE, PETS
@@ -16,13 +16,13 @@ class LogicGridGame(PuzzleGame):
     Each person/house has exactly one of each attribute type.
     """
 
-    def __init__(self, difficulty: str = "easy", seed: int | None = None):
+    def __init__(self, difficulty: str = "easy", seed: int | None = None, **kwargs):
         """Initialize a new Logic Grid game.
 
         Args:
             difficulty: Game difficulty level (easy=3x3, medium=4x4, hard=5x5)
         """
-        super().__init__(difficulty, seed)
+        super().__init__(difficulty, seed, **kwargs)
 
         # Use pydantic config based on difficulty
         self.config = LogicGridConfig.from_difficulty(self.difficulty)
@@ -75,6 +75,28 @@ class LogicGridGame(PuzzleGame):
     def complexity_profile(self) -> dict[str, str]:
         """Complexity profile of this puzzle."""
         return {"reasoning_type": "deductive", "search_space": "medium", "constraint_density": "moderate"}
+
+    @property
+    def optimal_steps(self) -> int | None:
+        """Minimum steps = attribute assignments (people x attributes)."""
+        return self.num_people * 3  # 3 attributes per person
+
+    @property
+    def difficulty_profile(self) -> "DifficultyProfile":
+        """Difficulty characteristics for Logic Grid."""
+        from ...models import DifficultyLevel
+
+        logic_depth = {
+            DifficultyLevel.EASY.value: 3,
+            DifficultyLevel.MEDIUM.value: 5,
+            DifficultyLevel.HARD.value: 7,
+        }.get(self.difficulty.value, 4)
+        return DifficultyProfile(
+            logic_depth=logic_depth,
+            branching_factor=float(self.num_people),
+            state_observability=1.0,
+            constraint_density=0.6,
+        )
 
     def _generate_solution(self) -> None:
         """Generate a random valid solution."""

@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from ...models import DifficultyLevel, MoveResult
+from ...models import DifficultyLevel, DifficultyProfile, MoveResult
 from .._base import PuzzleGame
 from .config import BinaryConfig
 
@@ -16,13 +16,13 @@ class BinaryPuzzleGame(PuzzleGame):
     - No two rows are identical, no two columns are identical
     """
 
-    def __init__(self, difficulty: str = "easy", seed: int | None = None):
+    def __init__(self, difficulty: str = "easy", seed: int | None = None, **kwargs):
         """Initialize a new Binary Puzzle game.
 
         Args:
             difficulty: Game difficulty level (easy=6x6, medium=8x8, hard=10x10)
         """
-        super().__init__(difficulty, seed)
+        super().__init__(difficulty, seed, **kwargs)
 
         # Grid size based on difficulty (must be even)
         self.config = BinaryConfig.from_difficulty(self.difficulty)
@@ -57,6 +57,31 @@ class BinaryPuzzleGame(PuzzleGame):
     def complexity_profile(self) -> dict[str, str]:
         """Complexity profile of this puzzle."""
         return {"reasoning_type": "deductive", "search_space": "medium", "constraint_density": "moderate"}
+
+    @property
+    def optimal_steps(self) -> int | None:
+        """Minimum steps = empty cells to fill."""
+        return sum(1 for r in range(self.size) for c in range(self.size) if self.grid[r][c] == -1)
+
+    @property
+    def difficulty_profile(self) -> "DifficultyProfile":
+        """Difficulty characteristics for Binary Puzzle."""
+
+        empty = self.optimal_steps or 0
+        total = self.size * self.size
+        logic_depth = {
+            DifficultyLevel.EASY.value: 2,
+            DifficultyLevel.MEDIUM.value: 3,
+            DifficultyLevel.HARD.value: 4,
+        }.get(self.difficulty.value, 2)
+        branching = 2.0  # Binary choice per cell
+        density = 1.0 - (empty / total) if total > 0 else 0.5
+        return DifficultyProfile(
+            logic_depth=logic_depth,
+            branching_factor=branching,
+            state_observability=1.0,
+            constraint_density=round(density, 2),
+        )
 
     def _check_no_three_consecutive(self, grid: list[list[int]]) -> bool:
         """Check if there are no three consecutive 0s or 1s.

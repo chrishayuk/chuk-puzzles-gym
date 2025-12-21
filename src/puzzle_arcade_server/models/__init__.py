@@ -9,8 +9,18 @@ from .enums import (
     CellState,
     ConnectionState,
     DifficultyLevel,
+    EpisodeStatus,
     GameCommand,
     OutputMode,
+)
+from .evaluation import (
+    DifficultyProfile,
+    EpisodeResult,
+    EpisodeTracer,
+    EvaluationSummary,
+    MoveRecord,
+    SolverConfig,
+    TraceEvent,
 )
 
 __all__ = [
@@ -18,10 +28,19 @@ __all__ = [
     "CellState",
     "ConnectionState",
     "DifficultyLevel",
+    "EpisodeStatus",
     "GameCommand",
     "OutputMode",
     # Base models
     "MoveResult",
     "GridPosition",
     "GameConfig",
+    # Evaluation models
+    "DifficultyProfile",
+    "EpisodeResult",
+    "EpisodeTracer",
+    "EvaluationSummary",
+    "MoveRecord",
+    "SolverConfig",
+    "TraceEvent",
 ]

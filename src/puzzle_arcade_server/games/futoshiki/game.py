@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from ...models import DifficultyLevel, MoveResult
+from ...models import DifficultyLevel, DifficultyProfile, MoveResult
 from .._base import PuzzleGame
 from .config import FutoshikiConfig
 
@@ -14,13 +14,13 @@ class FutoshikiGame(PuzzleGame):
     Each row and column must contain unique numbers from 1 to N.
     """
 
-    def __init__(self, difficulty: str = "easy", seed: int | None = None):
+    def __init__(self, difficulty: str = "easy", seed: int | None = None, **kwargs):
         """Initialize a new Futoshiki game.
 
         Args:
             difficulty: Game difficulty level (easy=4x4, medium=5x5, hard=6x6)
         """
-        super().__init__(difficulty, seed)
+        super().__init__(difficulty, seed, **kwargs)
 
         # Use pydantic config based on difficulty
         self.config = FutoshikiConfig.from_difficulty(self.difficulty)
@@ -58,6 +58,31 @@ class FutoshikiGame(PuzzleGame):
     def complexity_profile(self) -> dict[str, str]:
         """Complexity profile of this puzzle."""
         return {"reasoning_type": "deductive", "search_space": "medium", "constraint_density": "moderate"}
+
+    @property
+    def optimal_steps(self) -> int | None:
+        """Minimum steps = empty cells to fill."""
+        return sum(1 for r in range(self.size) for c in range(self.size) if self.grid[r][c] == 0)
+
+    @property
+    def difficulty_profile(self) -> "DifficultyProfile":
+        """Difficulty characteristics for Futoshiki."""
+
+        empty = self.optimal_steps or 0
+        total = self.size * self.size
+        logic_depth = {
+            DifficultyLevel.EASY.value: 2,
+            DifficultyLevel.MEDIUM.value: 3,
+            DifficultyLevel.HARD.value: 5,
+        }.get(self.difficulty.value, 3)
+        branching = 2.0 + (empty / total) * 2
+        density = 1.0 - (empty / total) if total > 0 else 0.5
+        return DifficultyProfile(
+            logic_depth=logic_depth,
+            branching_factor=round(branching, 1),
+            state_observability=1.0,
+            constraint_density=round(density, 2),
+        )
 
     def is_valid_move(self, row: int, col: int, num: int, grid: list[list[int]] | None = None) -> bool:
         """Check if placing num at (row, col) is valid.

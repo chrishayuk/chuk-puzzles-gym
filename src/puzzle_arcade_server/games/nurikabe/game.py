@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from ...models import MoveResult
+from ...models import DifficultyProfile, MoveResult
 from .._base import PuzzleGame
 from .config import NurikabeConfig
 from .enums import NurikabeColor
@@ -18,13 +18,13 @@ class NurikabeGame(PuzzleGame):
     - All white cells in an island are connected
     """
 
-    def __init__(self, difficulty: str = "easy", seed: int | None = None):
+    def __init__(self, difficulty: str = "easy", seed: int | None = None, **kwargs):
         """Initialize a new Nurikabe game.
 
         Args:
             difficulty: Game difficulty level (easy/medium/hard)
         """
-        super().__init__(difficulty, seed)
+        super().__init__(difficulty, seed, **kwargs)
 
         # Load config from difficulty
         self.config = NurikabeConfig.from_difficulty(self.difficulty)
@@ -68,6 +68,39 @@ class NurikabeGame(PuzzleGame):
     def complexity_profile(self) -> dict[str, str]:
         """Complexity profile of this puzzle."""
         return {"reasoning_type": "deductive", "search_space": "large", "constraint_density": "dense"}
+
+    @property
+    def optimal_steps(self) -> int | None:
+        """Minimum steps = all cells to mark (excluding clue cells)."""
+        if not hasattr(self, "solution") or not self.solution:
+            return None
+        # Solution has 1=island, 2=sea. Count all cells except we need to
+        # subtract clue cells which are already given
+        # Clues are stored separately, so count from solution
+        total_cells = self.size * self.size
+        # Count clue cells (they're integers > 0 in the clues dict or initial grid)
+        if hasattr(self, "clues") and self.clues:
+            num_clues = len(self.clues)
+        else:
+            num_clues = 0
+        return total_cells - num_clues
+
+    @property
+    def difficulty_profile(self) -> "DifficultyProfile":
+        """Difficulty characteristics for Nurikabe."""
+        from ...models import DifficultyLevel
+
+        logic_depth = {
+            DifficultyLevel.EASY.value: 3,
+            DifficultyLevel.MEDIUM.value: 5,
+            DifficultyLevel.HARD.value: 6,
+        }.get(self.difficulty.value, 4)
+        return DifficultyProfile(
+            logic_depth=logic_depth,
+            branching_factor=2.0,  # Island or sea
+            state_observability=1.0,
+            constraint_density=0.6,
+        )
 
     async def generate_puzzle(self) -> None:
         """Generate a new Nurikabe puzzle with sophisticated algorithm."""

@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from ...models import MoveResult
+from ...models import DifficultyProfile, MoveResult
 from .._base import PuzzleGame
 
 
@@ -17,16 +17,22 @@ class BridgesGame(PuzzleGame):
     - All islands must be connected in a single network
     """
 
-    def __init__(self, difficulty: str = "easy", seed: int | None = None):
+    def __init__(self, difficulty: str = "easy", seed: int | None = None, **kwargs):
         """Initialize a new Bridges game.
 
         Args:
             difficulty: Game difficulty level (easy, medium, hard)
         """
-        super().__init__(difficulty, seed)
+        super().__init__(difficulty, seed, **kwargs)
+
+        from ...models import DifficultyLevel
 
         # Set grid size based on difficulty
-        self.size = {"easy": 7, "medium": 9, "hard": 11}.get(self.difficulty.value, 7)
+        self.size = {
+            DifficultyLevel.EASY.value: 7,
+            DifficultyLevel.MEDIUM.value: 9,
+            DifficultyLevel.HARD.value: 11,
+        }.get(self.difficulty.value, 7)
 
         # Grid stores island values (0 = water, 1-8 = island with that many bridges needed)
         self.grid: list[list[int]] = [[0 for _ in range(self.size)] for _ in range(self.size)]
@@ -64,6 +70,31 @@ class BridgesGame(PuzzleGame):
     def complexity_profile(self) -> dict[str, str]:
         """Complexity profile of this puzzle."""
         return {"reasoning_type": "deductive", "search_space": "large", "constraint_density": "moderate"}
+
+    @property
+    def optimal_steps(self) -> int | None:
+        """Minimum steps = number of bridge connections to place."""
+        if not hasattr(self, "solution") or not self.solution:
+            return None
+        # Each connection is one move, regardless of bridge count (1 or 2)
+        return len(self.solution)
+
+    @property
+    def difficulty_profile(self) -> "DifficultyProfile":
+        """Difficulty characteristics for Bridges."""
+        from ...models import DifficultyLevel
+
+        logic_depth = {
+            DifficultyLevel.EASY.value: 2,
+            DifficultyLevel.MEDIUM.value: 4,
+            DifficultyLevel.HARD.value: 5,
+        }.get(self.difficulty.value, 3)
+        return DifficultyProfile(
+            logic_depth=logic_depth,
+            branching_factor=4.0,  # 4 directions, 0-2 bridges
+            state_observability=1.0,
+            constraint_density=0.5,
+        )
 
     def _normalize_bridge(self, r1: int, c1: int, r2: int, c2: int) -> tuple[int, int, int, int]:
         """Normalize bridge coordinates so smaller coords come first."""
@@ -165,7 +196,13 @@ class BridgesGame(PuzzleGame):
 
     def _place_islands_strategically(self) -> bool:
         """Place islands using strategic positions for better puzzle quality."""
-        num_islands = {"easy": 8, "medium": 12, "hard": 16}.get(self.difficulty.value, 8)
+        from ...models import DifficultyLevel
+
+        num_islands = {
+            DifficultyLevel.EASY.value: 8,
+            DifficultyLevel.MEDIUM.value: 12,
+            DifficultyLevel.HARD.value: 16,
+        }.get(self.difficulty.value, 8)
 
         # Create a grid of strategic positions (avoid edges for better connectivity)
         step = max(2, self.size // 4)

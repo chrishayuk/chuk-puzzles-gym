@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from ...models import MoveResult
+from ...models import DifficultyProfile, MoveResult
 from .._base import PuzzleGame
 from .config import SudokuConfig
 
@@ -10,14 +10,14 @@ from .config import SudokuConfig
 class SudokuGame(PuzzleGame):
     """Classic 9x9 Sudoku puzzle game."""
 
-    def __init__(self, difficulty: str = "easy", seed: int | None = None):
+    def __init__(self, difficulty: str = "easy", seed: int | None = None, **kwargs):
         """Initialize a new Sudoku game.
 
         Args:
             difficulty: Game difficulty level (easy, medium, hard)
             seed: Random seed for reproducible puzzle generation
         """
-        super().__init__(difficulty, seed)
+        super().__init__(difficulty, seed, **kwargs)
         self.config = SudokuConfig.from_difficulty(self.difficulty)
         self.grid = [[0 for _ in range(9)] for _ in range(9)]
         self.solution = [[0 for _ in range(9)] for _ in range(9)]
@@ -67,6 +67,35 @@ class SudokuGame(PuzzleGame):
             "branching_factor": branching_factor,
             "empty_cells": empty_cells,
         }
+
+    @property
+    def optimal_steps(self) -> int | None:
+        """Minimum steps to solve = number of empty cells to fill."""
+        return sum(1 for r in range(9) for c in range(9) if self.grid[r][c] == 0)
+
+    @property
+    def difficulty_profile(self) -> "DifficultyProfile":
+        """Detailed difficulty characteristics for Sudoku."""
+        from ...models import DifficultyLevel
+
+        empty = self.optimal_steps or 0
+        # Logic depth: easy puzzles need simple elimination, hard need chains
+        logic_depth = {
+            DifficultyLevel.EASY.value: 2,
+            DifficultyLevel.MEDIUM.value: 4,
+            DifficultyLevel.HARD.value: 6,
+        }.get(self.difficulty.value, 3)
+        # Branching factor increases with empty cells
+        branching = 2.0 + (empty / 81) * 4  # 2-6 range
+        # Constraint density is inverse of empty cells ratio
+        density = 1.0 - (empty / 81)
+
+        return DifficultyProfile(
+            logic_depth=logic_depth,
+            branching_factor=round(branching, 1),
+            state_observability=1.0,
+            constraint_density=round(density, 2),
+        )
 
     def is_valid_move(self, row: int, col: int, num: int, grid: list[list[int]] | None = None) -> bool:
         """Check if placing num at (row, col) is valid according to sudoku rules.

@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from ...models import DifficultyLevel, MoveResult
+from ...models import DifficultyLevel, DifficultyProfile, MoveResult
 from .._base import PuzzleGame
 from .config import SlitherlinkConfig
 
@@ -15,13 +15,13 @@ class SlitherlinkGame(PuzzleGame):
     The loop must not branch or cross itself.
     """
 
-    def __init__(self, difficulty: str = "easy", seed: int | None = None):
+    def __init__(self, difficulty: str = "easy", seed: int | None = None, **kwargs):
         """Initialize a new Slitherlink game.
 
         Args:
             difficulty: Game difficulty level (easy/medium/hard)
         """
-        super().__init__(difficulty, seed)
+        super().__init__(difficulty, seed, **kwargs)
 
         # Grid configuration
         self.config = SlitherlinkConfig.from_difficulty(self.difficulty)
@@ -64,6 +64,31 @@ class SlitherlinkGame(PuzzleGame):
     def complexity_profile(self) -> dict[str, str]:
         """Complexity profile of this puzzle."""
         return {"reasoning_type": "deductive", "search_space": "exponential", "constraint_density": "moderate"}
+
+    @property
+    def optimal_steps(self) -> int | None:
+        """Minimum steps = line segments to draw."""
+        if not hasattr(self, "solution_h_edges") or not hasattr(self, "solution_v_edges"):
+            return None
+        h_lines = sum(sum(row) for row in self.solution_h_edges)
+        v_lines = sum(sum(row) for row in self.solution_v_edges)
+        return h_lines + v_lines
+
+    @property
+    def difficulty_profile(self) -> "DifficultyProfile":
+        """Difficulty characteristics for Slitherlink."""
+
+        logic_depth = {
+            DifficultyLevel.EASY.value: 3,
+            DifficultyLevel.MEDIUM.value: 5,
+            DifficultyLevel.HARD.value: 7,
+        }.get(self.difficulty.value, 4)
+        return DifficultyProfile(
+            logic_depth=logic_depth,
+            branching_factor=4.0,  # 4 edges per cell
+            state_observability=1.0,
+            constraint_density=0.6,
+        )
 
     def _generate_simple_loop(self) -> None:
         """Generate a simple rectangular loop as the solution."""

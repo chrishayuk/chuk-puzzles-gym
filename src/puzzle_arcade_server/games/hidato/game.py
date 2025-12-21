@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from ...models import MoveResult
+from ...models import DifficultyProfile, MoveResult
 from .._base import PuzzleGame
 from .config import HidatoConfig
 
@@ -15,13 +15,13 @@ class HidatoGame(PuzzleGame):
     Creates a continuous path through all cells.
     """
 
-    def __init__(self, difficulty: str = "easy", seed: int | None = None):
+    def __init__(self, difficulty: str = "easy", seed: int | None = None, **kwargs):
         """Initialize a new Hidato game.
 
         Args:
             difficulty: Game difficulty level (easy=5x5, medium=7x7, hard=9x9)
         """
-        super().__init__(difficulty, seed)
+        super().__init__(difficulty, seed, **kwargs)
 
         # Use pydantic config based on difficulty
         self.config = HidatoConfig.from_difficulty(self.difficulty)
@@ -59,6 +59,32 @@ class HidatoGame(PuzzleGame):
     def complexity_profile(self) -> dict[str, str]:
         """Complexity profile of this puzzle."""
         return {"reasoning_type": "deductive", "search_space": "large", "constraint_density": "dense"}
+
+    @property
+    def optimal_steps(self) -> int | None:
+        """Minimum steps = empty cells to fill."""
+        return sum(1 for r in range(self.size) for c in range(self.size) if self.grid[r][c] == 0)
+
+    @property
+    def difficulty_profile(self) -> "DifficultyProfile":
+        """Difficulty characteristics for Hidato."""
+        from ...models import DifficultyLevel
+
+        empty = self.optimal_steps or 0
+        total = self.size * self.size
+        logic_depth = {
+            DifficultyLevel.EASY.value: 2,
+            DifficultyLevel.MEDIUM.value: 4,
+            DifficultyLevel.HARD.value: 5,
+        }.get(self.difficulty.value, 3)
+        branching = 4.0 + (empty / total) * 4  # Up to 8 neighbors
+        density = 1.0 - (empty / total) if total > 0 else 0.5
+        return DifficultyProfile(
+            logic_depth=logic_depth,
+            branching_factor=round(branching, 1),
+            state_observability=1.0,
+            constraint_density=round(density, 2),
+        )
 
     def _get_neighbors(self, row: int, col: int) -> list[tuple[int, int]]:
         """Get all adjacent cells (including diagonals).

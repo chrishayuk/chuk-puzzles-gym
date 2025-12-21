@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from ...models import MoveResult
+from ...models import DifficultyProfile, MoveResult
 from .._base import PuzzleGame
 from .config import KakuroConfig
 
@@ -15,13 +15,13 @@ class KakuroGame(PuzzleGame):
     within a run.
     """
 
-    def __init__(self, difficulty: str = "easy", seed: int | None = None):
+    def __init__(self, difficulty: str = "easy", seed: int | None = None, **kwargs):
         """Initialize a new Kakuro game.
 
         Args:
             difficulty: Game difficulty level (easy=4x4, medium=6x6, hard=8x8)
         """
-        super().__init__(difficulty, seed)
+        super().__init__(difficulty, seed, **kwargs)
 
         # Use pydantic config based on difficulty
         self.config = KakuroConfig.from_difficulty(self.difficulty)
@@ -60,6 +60,30 @@ class KakuroGame(PuzzleGame):
     def complexity_profile(self) -> dict[str, str]:
         """Complexity profile of this puzzle."""
         return {"reasoning_type": "deductive", "search_space": "medium", "constraint_density": "moderate"}
+
+    @property
+    def optimal_steps(self) -> int | None:
+        """Minimum steps = white cells to fill."""
+        if not hasattr(self, "grid") or not self.grid:
+            return None
+        return sum(1 for r in range(len(self.grid)) for c in range(len(self.grid[0])) if self.grid[r][c] == 0)
+
+    @property
+    def difficulty_profile(self) -> "DifficultyProfile":
+        """Difficulty characteristics for Kakuro."""
+        from ...models import DifficultyLevel
+
+        logic_depth = {
+            DifficultyLevel.EASY.value: 2,
+            DifficultyLevel.MEDIUM.value: 4,
+            DifficultyLevel.HARD.value: 5,
+        }.get(self.difficulty.value, 3)
+        return DifficultyProfile(
+            logic_depth=logic_depth,
+            branching_factor=3.0,
+            state_observability=1.0,
+            constraint_density=0.6,
+        )
 
     def _is_cell_in_run(self, row: int, col: int) -> bool:
         """Check if a cell is part of at least one run of length >= 2."""

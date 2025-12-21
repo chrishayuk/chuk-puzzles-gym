@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from ...models import MoveResult
+from ...models import DifficultyProfile, MoveResult
 from .._base import PuzzleGame
 from .config import MinesweeperConfig
 from .enums import MinesweeperAction
@@ -15,13 +15,13 @@ class MinesweeperGame(PuzzleGame):
     Tests AI ability to reason under uncertainty and make safe deductions.
     """
 
-    def __init__(self, difficulty: str = "easy", seed: int | None = None):
+    def __init__(self, difficulty: str = "easy", seed: int | None = None, **kwargs):
         """Initialize a new Minesweeper game.
 
         Args:
             difficulty: Game difficulty level (easy/medium/hard)
         """
-        super().__init__(difficulty, seed)
+        super().__init__(difficulty, seed, **kwargs)
 
         # Use pydantic config based on difficulty
         self.config = MinesweeperConfig.from_difficulty(self.difficulty)
@@ -67,6 +67,56 @@ class MinesweeperGame(PuzzleGame):
     def complexity_profile(self) -> dict[str, str]:
         """Complexity profile of this puzzle."""
         return {"reasoning_type": "probabilistic", "search_space": "large", "constraint_density": "sparse"}
+
+    @property
+    def optimal_steps(self) -> int | None:
+        """Minimum steps = clicks needed accounting for cascade reveals."""
+        if not hasattr(self, "counts") or not hasattr(self, "mines"):
+            return None
+
+        # Simulate cascade reveals to count actual clicks needed
+        revealed = [[False] * self.size for _ in range(self.size)]
+        clicks = 0
+
+        def cascade_reveal(r: int, c: int) -> None:
+            """Simulate revealing a cell and cascading if zero."""
+            if revealed[r][c] or self.mines[r][c]:
+                return
+            revealed[r][c] = True
+            if self.counts[r][c] == 0:
+                for dr in [-1, 0, 1]:
+                    for dc in [-1, 0, 1]:
+                        nr, nc = r + dr, c + dc
+                        if 0 <= nr < self.size and 0 <= nc < self.size:
+                            cascade_reveal(nr, nc)
+
+        # Reveal all safe cells, counting clicks
+        for r in range(self.size):
+            for c in range(self.size):
+                if not self.mines[r][c] and not revealed[r][c]:
+                    clicks += 1
+                    cascade_reveal(r, c)
+
+        return clicks
+
+    @property
+    def difficulty_profile(self) -> "DifficultyProfile":
+        """Difficulty characteristics for Minesweeper."""
+        from ...models import DifficultyLevel
+
+        total = self.size * self.size
+        mine_ratio = self.num_mines / total if total > 0 else 0.2
+        logic_depth = {
+            DifficultyLevel.EASY.value: 2,
+            DifficultyLevel.MEDIUM.value: 4,
+            DifficultyLevel.HARD.value: 6,
+        }.get(self.difficulty.value, 3)
+        return DifficultyProfile(
+            logic_depth=logic_depth,
+            branching_factor=3.0 + mine_ratio * 5,
+            state_observability=0.5,  # Hidden mines
+            constraint_density=round(mine_ratio, 2),
+        )
 
     async def generate_puzzle(self) -> None:
         """Generate a new Minesweeper puzzle."""

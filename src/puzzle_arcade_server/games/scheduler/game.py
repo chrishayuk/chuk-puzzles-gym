@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from ...models import MoveResult
+from ...models import DifficultyProfile, MoveResult
 from .._base import PuzzleGame
 from .config import SchedulerConfig
 from .constants import TASK_NAMES
@@ -18,13 +18,13 @@ class SchedulerGame(PuzzleGame):
     Demonstrates temporal reasoning and optimization.
     """
 
-    def __init__(self, difficulty: str = "easy", seed: int | None = None):
+    def __init__(self, difficulty: str = "easy", seed: int | None = None, **kwargs):
         """Initialize a new Scheduler game.
 
         Args:
             difficulty: Game difficulty level (easy/medium/hard)
         """
-        super().__init__(difficulty, seed)
+        super().__init__(difficulty, seed, **kwargs)
 
         # Configuration using Pydantic model
         self.config = SchedulerConfig.from_difficulty(self.difficulty)
@@ -66,6 +66,29 @@ class SchedulerGame(PuzzleGame):
     def complexity_profile(self) -> dict[str, str]:
         """Complexity profile of this puzzle."""
         return {"reasoning_type": "optimization", "search_space": "exponential", "constraint_density": "moderate"}
+
+    @property
+    def optimal_steps(self) -> int | None:
+        """Minimum steps = tasks to schedule."""
+        return len(self.tasks) if hasattr(self, "tasks") else None
+
+    @property
+    def difficulty_profile(self) -> "DifficultyProfile":
+        """Difficulty characteristics for Task Scheduler."""
+        from ...models import DifficultyLevel
+
+        logic_depth = {
+            DifficultyLevel.EASY.value: 2,
+            DifficultyLevel.MEDIUM.value: 4,
+            DifficultyLevel.HARD.value: 5,
+        }.get(self.difficulty.value, 3)
+        n_workers = self.num_workers if hasattr(self, "num_workers") else 3
+        return DifficultyProfile(
+            logic_depth=logic_depth,
+            branching_factor=float(n_workers),
+            state_observability=1.0,
+            constraint_density=0.5,
+        )
 
     async def generate_puzzle(self) -> None:
         """Generate a new Scheduler puzzle."""

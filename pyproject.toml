@@ -107,6 +107,14 @@ exclude = [
 no_strict_optional = true
 follow_imports = "skip"
 follow_imports_for_stubs = false
+plugins = ["pydantic.mypy"]
+# Disable prop-decorator error for pydantic's @computed_field @property pattern
+disable_error_code = ["prop-decorator"]
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
 
 [tool.coverage.run]
 source = ["src"]

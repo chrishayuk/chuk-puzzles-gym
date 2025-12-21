@@ -1,7 +1,7 @@
 # Puzzle Arcade Server
 
 [![Test](https://github.com/chrishayuk/puzzle-arcade-server/workflows/Test/badge.svg)](https://github.com/chrishayuk/puzzle-arcade-server/actions)
-[![Coverage](https://img.shields.io/badge/coverage-95%25-brightgreen)](htmlcov/index.html)
+[![Coverage](https://img.shields.io/badge/coverage-94%25-brightgreen)](htmlcov/index.html)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 [![Pydantic v2](https://img.shields.io/badge/pydantic-v2-purple.svg)](https://docs.pydantic.dev/)

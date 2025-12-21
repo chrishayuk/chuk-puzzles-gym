@@ -80,13 +80,22 @@ class TestPuzzleGame:
         """Test get_stats method."""
         game = ConcretePuzzleGame("easy", seed=42)
         stats = game.get_stats()
-        assert "Moves made: 0" in stats
+        assert "Moves: 0" in stats
         assert "Seed: 42" in stats
 
         # Increment moves and test again
         game.moves_made = 5
         stats = game.get_stats()
-        assert "Moves made: 5" in stats
+        assert "Moves: 5" in stats
+        assert "Seed: 42" in stats
+
+        # Test with invalid moves and hints
+        game.invalid_moves = 2
+        game.hints_used = 3
+        stats = game.get_stats()
+        assert "Moves: 5" in stats
+        assert "Invalid: 2" in stats
+        assert "Hints: 3" in stats
         assert "Seed: 42" in stats
 
     async def test_abstract_methods(self):

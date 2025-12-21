@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from ...models import MoveResult
+from ...models import DifficultyProfile, MoveResult
 from .._base import PuzzleGame
 
 
@@ -16,16 +16,22 @@ class ShikakuGame(PuzzleGame):
     - Rectangles cannot overlap
     """
 
-    def __init__(self, difficulty: str = "easy", seed: int | None = None):
+    def __init__(self, difficulty: str = "easy", seed: int | None = None, **kwargs):
         """Initialize a new Shikaku game.
 
         Args:
             difficulty: Game difficulty level (easy, medium, hard)
         """
-        super().__init__(difficulty, seed)
+        super().__init__(difficulty, seed, **kwargs)
+
+        from ...models import DifficultyLevel
 
         # Set grid size based on difficulty
-        self.size = {"easy": 6, "medium": 8, "hard": 10}.get(self.difficulty.value, 6)
+        self.size = {
+            DifficultyLevel.EASY.value: 6,
+            DifficultyLevel.MEDIUM.value: 8,
+            DifficultyLevel.HARD.value: 10,
+        }.get(self.difficulty.value, 6)
 
         # Grid stores the clue numbers (0 = no clue)
         self.grid: list[list[int]] = [[0 for _ in range(self.size)] for _ in range(self.size)]
@@ -64,6 +70,30 @@ class ShikakuGame(PuzzleGame):
     def complexity_profile(self) -> dict[str, str]:
         """Complexity profile of this puzzle."""
         return {"reasoning_type": "deductive", "search_space": "large", "constraint_density": "moderate"}
+
+    @property
+    def optimal_steps(self) -> int | None:
+        """Minimum steps = rectangles to create."""
+        if not hasattr(self, "solution") or not self.solution:
+            return None
+        return max(max(row) for row in self.solution) if self.solution else None
+
+    @property
+    def difficulty_profile(self) -> "DifficultyProfile":
+        """Difficulty characteristics for Shikaku."""
+        from ...models import DifficultyLevel
+
+        logic_depth = {
+            DifficultyLevel.EASY.value: 2,
+            DifficultyLevel.MEDIUM.value: 4,
+            DifficultyLevel.HARD.value: 5,
+        }.get(self.difficulty.value, 3)
+        return DifficultyProfile(
+            logic_depth=logic_depth,
+            branching_factor=5.0,  # Many rectangle possibilities
+            state_observability=1.0,
+            constraint_density=0.5,
+        )
 
     async def generate_puzzle(self) -> None:
         """Generate a new Shikaku puzzle with retry logic."""

@@ -29,6 +29,8 @@ class GameCommand(str, Enum):
     M = "m"
     MODE = "mode"
     SEED = "seed"
+    COMPARE = "compare"
+    STATS = "stats"
     # Game-specific commands (kept here for server command parsing)
     PLACE = "place"
     CLEAR = "clear"
@@ -69,8 +71,29 @@ class ConnectionState(IntEnum):
 
 
 class OutputMode(str, Enum):
-    """Output mode for the server."""
+    """Output mode for the server.
+
+    - NORMAL: Human-friendly output with explanations and formatting
+    - AGENT: Structured output with clear markers for AI agents
+    - COMPACT: Minimal output for bandwidth-constrained connections
+    - STRICT: Fixed grammar, symbolic inputs, machine-verifiable (for RL/benchmarks)
+    - NATURAL: Conversational, accepts ambiguous/paraphrased inputs (robustness testing)
+    - JSON: Full JSON protocol for RL integration (gym-style observations/actions)
+    """
 
     NORMAL = "normal"
     AGENT = "agent"
     COMPACT = "compact"
+    STRICT = "strict"
+    NATURAL = "natural"
+    JSON = "json"
+
+
+class EpisodeStatus(str, Enum):
+    """Status of a puzzle episode."""
+
+    IN_PROGRESS = "in_progress"
+    SOLVED = "solved"
+    FAILED = "failed"
+    TIMEOUT = "timeout"
+    ABANDONED = "abandoned"

@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from ...models import MoveResult
+from ...models import DifficultyProfile, MoveResult
 from .._base import PuzzleGame
 from .config import TentsConfig
 
@@ -17,13 +17,13 @@ class TentsGame(PuzzleGame):
     - Row and column counts show how many tents are in each row/column
     """
 
-    def __init__(self, difficulty: str = "easy", seed: int | None = None):
+    def __init__(self, difficulty: str = "easy", seed: int | None = None, **kwargs):
         """Initialize a new Tents game.
 
         Args:
             difficulty: Game difficulty level (easy=6x6, medium=8x8, hard=10x10)
         """
-        super().__init__(difficulty, seed)
+        super().__init__(difficulty, seed, **kwargs)
 
         # Use pydantic config based on difficulty
         self.config = TentsConfig.from_difficulty(self.difficulty)
@@ -64,6 +64,31 @@ class TentsGame(PuzzleGame):
     def complexity_profile(self) -> dict[str, str]:
         """Complexity profile of this puzzle."""
         return {"reasoning_type": "deductive", "search_space": "medium", "constraint_density": "moderate"}
+
+    @property
+    def optimal_steps(self) -> int | None:
+        """Minimum steps = tents to place (equals trees)."""
+        if not hasattr(self, "solution") or not self.solution:
+            return None
+        # Solution uses: 0=empty, 1=tent, 2=tree. Count tents only.
+        return sum(1 for row in self.solution for cell in row if cell == 1)
+
+    @property
+    def difficulty_profile(self) -> "DifficultyProfile":
+        """Difficulty characteristics for Tents and Trees."""
+        from ...models import DifficultyLevel
+
+        logic_depth = {
+            DifficultyLevel.EASY.value: 2,
+            DifficultyLevel.MEDIUM.value: 4,
+            DifficultyLevel.HARD.value: 5,
+        }.get(self.difficulty.value, 3)
+        return DifficultyProfile(
+            logic_depth=logic_depth,
+            branching_factor=4.0,  # 4 adjacent positions
+            state_observability=1.0,
+            constraint_density=0.5,
+        )
 
     def _get_adjacent(self, row: int, col: int) -> list[tuple[int, int]]:
         """Get orthogonally adjacent cells (no diagonals).

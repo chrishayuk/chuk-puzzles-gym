@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from ...models import MoveResult
+from ...models import DifficultyProfile, MoveResult
 from .._base import PuzzleGame
 from .config import KillerSudokuConfig
 from .models import Cage
@@ -15,13 +15,13 @@ class KillerSudokuGame(PuzzleGame):
     where regions sum to target values.
     """
 
-    def __init__(self, difficulty: str = "easy", seed: int | None = None):
+    def __init__(self, difficulty: str = "easy", seed: int | None = None, **kwargs):
         """Initialize a new Killer Sudoku game.
 
         Args:
             difficulty: Game difficulty level (easy/medium/hard)
         """
-        super().__init__(difficulty, seed)
+        super().__init__(difficulty, seed, **kwargs)
 
         self.config = KillerSudokuConfig.from_difficulty(self.difficulty)
         self.size = 9
@@ -56,6 +56,31 @@ class KillerSudokuGame(PuzzleGame):
     def complexity_profile(self) -> dict[str, str]:
         """Complexity profile of this puzzle."""
         return {"reasoning_type": "deductive", "search_space": "large", "constraint_density": "dense"}
+
+    @property
+    def optimal_steps(self) -> int | None:
+        """Minimum steps = empty cells to fill."""
+        return sum(1 for r in range(9) for c in range(9) if self.grid[r][c] == 0)
+
+    @property
+    def difficulty_profile(self) -> "DifficultyProfile":
+        """Difficulty characteristics for Killer Sudoku."""
+        from ...models import DifficultyLevel
+
+        empty = self.optimal_steps or 0
+        logic_depth = {
+            DifficultyLevel.EASY.value: 3,
+            DifficultyLevel.MEDIUM.value: 5,
+            DifficultyLevel.HARD.value: 7,
+        }.get(self.difficulty.value, 4)
+        branching = 2.5 + (empty / 81) * 4
+        density = 1.0 - (empty / 81)
+        return DifficultyProfile(
+            logic_depth=logic_depth,
+            branching_factor=round(branching, 1),
+            state_observability=1.0,
+            constraint_density=round(density, 2),
+        )
 
     def is_valid_move(self, row: int, col: int, num: int, grid: list[list[int]] | None = None) -> bool:
         """Check if placing num at (row, col) is valid.

@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from ...models import MoveResult
+from ...models import DifficultyProfile, MoveResult
 from .._base import PuzzleGame
 from .config import StarBattleConfig
 
@@ -17,13 +17,13 @@ class StarBattleGame(PuzzleGame):
     - Stars cannot touch each other (not even diagonally)
     """
 
-    def __init__(self, difficulty: str = "easy", seed: int | None = None):
+    def __init__(self, difficulty: str = "easy", seed: int | None = None, **kwargs):
         """Initialize a new Star Battle game.
 
         Args:
             difficulty: Game difficulty level (easy=6x6/1star, medium=8x8/2stars, hard=10x10/2stars)
         """
-        super().__init__(difficulty, seed)
+        super().__init__(difficulty, seed, **kwargs)
 
         # Use pydantic config based on difficulty
         self.config = StarBattleConfig.from_difficulty(self.difficulty)
@@ -61,6 +61,30 @@ class StarBattleGame(PuzzleGame):
     def complexity_profile(self) -> dict[str, str]:
         """Complexity profile of this puzzle."""
         return {"reasoning_type": "deductive", "search_space": "large", "constraint_density": "dense"}
+
+    @property
+    def optimal_steps(self) -> int | None:
+        """Minimum steps = stars to place."""
+        if not hasattr(self, "solution") or not self.solution:
+            return None
+        return sum(sum(row) for row in self.solution)
+
+    @property
+    def difficulty_profile(self) -> "DifficultyProfile":
+        """Difficulty characteristics for Star Battle."""
+        from ...models import DifficultyLevel
+
+        logic_depth = {
+            DifficultyLevel.EASY.value: 3,
+            DifficultyLevel.MEDIUM.value: 5,
+            DifficultyLevel.HARD.value: 6,
+        }.get(self.difficulty.value, 4)
+        return DifficultyProfile(
+            logic_depth=logic_depth,
+            branching_factor=3.0,
+            state_observability=1.0,
+            constraint_density=0.6,
+        )
 
     def _get_all_adjacent(self, row: int, col: int) -> list[tuple[int, int]]:
         """Get all adjacent cells including diagonals.

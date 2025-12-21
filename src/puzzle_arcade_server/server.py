@@ -7,6 +7,7 @@ LLMs with MCP solver access can telnet in and solve these puzzles.
 """
 
 import asyncio
+import json
 import logging
 import os
 import sys
@@ -37,6 +38,90 @@ class ArcadeHandler(TelnetHandler):
         self.game_handler: GameCommandHandler | None = None
         self.in_menu = True
         self.output_mode = OutputMode.NORMAL
+
+    async def send_result(self, success: bool, message: str, code: str = "") -> None:
+        """Send a result message based on current output mode.
+
+        Args:
+            success: Whether the operation succeeded
+            message: Human-readable message
+            code: Short code for strict/json mode (e.g., 'PLACED', 'INVALID_MOVE')
+        """
+        if self.output_mode == OutputMode.JSON:
+            response = {"type": "result", "success": success, "code": code, "message": message}
+            if self.current_game:
+                response["state"] = self.get_game_state_dict()
+            await self.send_json_response(**response)
+        elif self.output_mode == OutputMode.STRICT:
+            prefix = "OK" if success else "ERR"
+            await self.send_line(f"{prefix}:{code}" if code else prefix)
+        else:
+            await self.send_line(message)
+
+    async def send_game_complete(self) -> None:
+        """Send game completion message based on output mode."""
+        if not self.current_game:
+            return
+
+        if self.output_mode == OutputMode.JSON:
+            await self.send_json_response(
+                type="complete",
+                success=True,
+                game=self.current_game.name,
+                moves=self.current_game.moves_made,
+                invalid_moves=self.current_game.invalid_moves,
+                hints_used=self.current_game.hints_used,
+                optimal_steps=self.current_game.optimal_steps,
+            )
+        elif self.output_mode == OutputMode.STRICT:
+            await self.send_line(
+                f"COMPLETE:{self.current_game.moves_made}:{self.current_game.invalid_moves}:"
+                f"{self.current_game.hints_used}"
+            )
+        else:
+            await self.send_line("\n" + "=" * 50)
+            await self.send_line("CONGRATULATIONS! YOU SOLVED IT!")
+            await self.send_line("=" * 50)
+            await self.send_line(self.current_game.get_stats())
+            await self.send_line("\nType 'menu' to play another game.")
+            await self.send_line("=" * 50 + "\n")
+
+    async def send_json_response(self, **kwargs) -> None:
+        """Send a JSON-formatted response for RL integration."""
+        await self.send_line(json.dumps(kwargs, separators=(",", ":")))
+
+    def get_game_state_dict(self) -> dict:
+        """Get current game state as a dictionary for JSON mode."""
+        if not self.current_game:
+            return {"error": "no_game"}
+
+        # Get grid representation
+        grid = None
+        if hasattr(self.current_game, "grid"):
+            grid = self.current_game.grid
+
+        # Get difficulty profile
+        profile = self.current_game.difficulty_profile
+        profile_dict = {
+            "logic_depth": profile.logic_depth,
+            "branching_factor": profile.branching_factor,
+            "state_observability": profile.state_observability,
+            "constraint_density": profile.constraint_density,
+        }
+
+        return {
+            "game": self.current_game.name,
+            "difficulty": self.current_game.difficulty.value,
+            "seed": self.current_game.seed,
+            "moves": self.current_game.moves_made,
+            "invalid_moves": self.current_game.invalid_moves,
+            "hints_used": self.current_game.hints_used,
+            "hints_remaining": self.current_game.hints_remaining,
+            "optimal_steps": self.current_game.optimal_steps,
+            "is_complete": self.current_game.is_complete(),
+            "difficulty_profile": profile_dict,
+            "grid": grid,
+        }
 
     async def show_main_menu(self) -> None:
         """Display the main game selection menu."""
@@ -147,10 +232,33 @@ class ArcadeHandler(TelnetHandler):
     async def display_puzzle(self) -> None:
         """Display the current puzzle state."""
         if not self.current_game:
-            await self.send_line("No game in progress. Type 'menu' to select a game.")
+            if self.output_mode == OutputMode.JSON:
+                await self.send_json_response(type="error", code="NO_GAME", message="No game in progress")
+            elif self.output_mode == OutputMode.STRICT:
+                await self.send_line("ERR:NO_GAME")
+            else:
+                await self.send_line("No game in progress. Type 'menu' to select a game.")
             return
 
-        if self.output_mode == OutputMode.AGENT:
+        if self.output_mode == OutputMode.JSON:
+            # JSON mode: full state as JSON for RL agents
+            state = self.get_game_state_dict()
+            state["type"] = "observation"
+            state["grid_display"] = self.current_game.render_grid()
+            await self.send_json_response(**state)
+        elif self.output_mode == OutputMode.STRICT:
+            # Strict mode: terse, machine-verifiable output
+            # Format: STATE:<game>:<difficulty>:<seed>:<moves>:<status>
+            status = "complete" if self.current_game.is_complete() else "active"
+            await self.send_line(
+                f"STATE:{self.current_game.name}:{self.current_game.difficulty.value}:"
+                f"{self.current_game.seed}:{self.current_game.moves_made}:{status}"
+            )
+            # Grid as compact lines
+            grid_lines = self.current_game.render_grid().rstrip("\n").split("\n")
+            for line in grid_lines:
+                await self.send_line(line)
+        elif self.output_mode == OutputMode.AGENT:
             # Agent-friendly output with clear markers
             await self.send_line("---GAME-START---")
             await self.send_line(f"GAME: {self.current_game.name}")
@@ -163,7 +271,7 @@ class ArcadeHandler(TelnetHandler):
             await self.send_line("---GRID-END---")
             await self.send_line("---GAME-END---")
         else:
-            # Normal human-friendly output
+            # Normal/natural human-friendly output
             await self.send_line("")
             await self.send_line("=" * 50)
 
@@ -295,16 +403,28 @@ class ArcadeHandler(TelnetHandler):
 
         if cmd_enum == GameCommand.MODE:
             if len(parts) != 2:
-                await self.send_line("Usage: mode <normal|agent|compact>")
+                await self.send_line("Usage: mode <normal|agent|compact|strict|natural|json>")
                 return
 
             mode_str = parts[1].lower()
             try:
                 new_mode = OutputMode(mode_str)
                 self.output_mode = new_mode
-                await self.send_line(f"Output mode set to: {new_mode.value}")
+                if new_mode == OutputMode.JSON:
+                    await self.send_json_response(type="mode", mode="json", success=True)
+                elif new_mode == OutputMode.STRICT:
+                    await self.send_line("OK:MODE=strict")
+                else:
+                    await self.send_line(f"Output mode set to: {new_mode.value}")
             except ValueError:
-                await self.send_line(f"Invalid mode '{mode_str}'. Choose: normal, agent, or compact")
+                if self.output_mode == OutputMode.JSON:
+                    await self.send_json_response(type="error", code="INVALID_MODE", mode=mode_str)
+                elif self.output_mode == OutputMode.STRICT:
+                    await self.send_line(f"ERR:INVALID_MODE:{mode_str}")
+                else:
+                    await self.send_line(
+                        f"Invalid mode '{mode_str}'. Choose: normal, agent, compact, strict, natural, or json"
+                    )
             return
 
         if cmd_enum == GameCommand.SEED:
@@ -314,26 +434,152 @@ class ArcadeHandler(TelnetHandler):
             await self.send_line(f"  {game_name} {self.current_game.difficulty.value} {self.current_game.seed}")
             return
 
+        if cmd_enum == GameCommand.STATS:
+            # Show detailed stats including difficulty profile
+            profile = self.current_game.difficulty_profile
+            optimal = self.current_game.optimal_steps
+
+            if self.output_mode == OutputMode.JSON:
+                await self.send_json_response(
+                    type="stats",
+                    game=self.current_game.name,
+                    difficulty=self.current_game.difficulty.value,
+                    seed=self.current_game.seed,
+                    moves=self.current_game.moves_made,
+                    invalid_moves=self.current_game.invalid_moves,
+                    hints_used=self.current_game.hints_used,
+                    optimal_steps=optimal,
+                    difficulty_profile={
+                        "logic_depth": profile.logic_depth,
+                        "branching_factor": profile.branching_factor,
+                        "state_observability": profile.state_observability,
+                        "constraint_density": profile.constraint_density,
+                    },
+                )
+            elif self.output_mode == OutputMode.STRICT:
+                await self.send_line(
+                    f"STATS:{self.current_game.moves_made}:{self.current_game.invalid_moves}:"
+                    f"{self.current_game.hints_used}:{optimal or 0}"
+                )
+            else:
+                await self.send_line("")
+                await self.send_line("=" * 50)
+                await self.send_line(f"GAME STATISTICS - {self.current_game.name}")
+                await self.send_line("=" * 50)
+                await self.send_line(f"Difficulty: {self.current_game.difficulty.value}")
+                await self.send_line(f"Seed: {self.current_game.seed}")
+                await self.send_line("")
+                await self.send_line("Progress:")
+                await self.send_line(f"  Moves made: {self.current_game.moves_made}")
+                await self.send_line(f"  Invalid attempts: {self.current_game.invalid_moves}")
+                await self.send_line(f"  Hints used: {self.current_game.hints_used}")
+                if optimal:
+                    efficiency = (
+                        min(1.0, optimal / max(1, self.current_game.moves_made))
+                        if self.current_game.moves_made > 0
+                        else 0
+                    )
+                    await self.send_line(f"  Optimal steps: {optimal}")
+                    await self.send_line(f"  Current efficiency: {efficiency:.1%}")
+                await self.send_line("")
+                await self.send_line("Difficulty Profile:")
+                await self.send_line(f"  Logic depth: {profile.logic_depth}")
+                await self.send_line(f"  Branching factor: {profile.branching_factor:.1f}")
+                await self.send_line(f"  State observability: {profile.state_observability:.0%}")
+                await self.send_line(f"  Constraint density: {profile.constraint_density:.0%}")
+                await self.send_line("=" * 50)
+            return
+
+        if cmd_enum == GameCommand.COMPARE:
+            # Compare current progress with solver solution
+            if not hasattr(self.current_game, "solution"):
+                await self.send_result(False, "Comparison not available for this game type.", "COMPARE_UNAVAILABLE")
+                return
+
+            optimal = self.current_game.optimal_steps or 0
+            moves = self.current_game.moves_made
+            is_complete = self.current_game.is_complete()
+
+            # Calculate comparison metrics
+            if moves > 0 and optimal > 0:
+                efficiency = min(1.0, optimal / moves)
+            else:
+                efficiency = 0.0
+
+            error_rate = 0.0
+            total_actions = moves + self.current_game.invalid_moves
+            if total_actions > 0:
+                error_rate = self.current_game.invalid_moves / total_actions
+
+            if self.output_mode == OutputMode.JSON:
+                await self.send_json_response(
+                    type="comparison",
+                    complete=is_complete,
+                    your_moves=moves,
+                    optimal_moves=optimal,
+                    efficiency=round(efficiency, 3),
+                    invalid_moves=self.current_game.invalid_moves,
+                    error_rate=round(error_rate, 3),
+                    hints_used=self.current_game.hints_used,
+                )
+            elif self.output_mode == OutputMode.STRICT:
+                status = "complete" if is_complete else "incomplete"
+                await self.send_line(f"COMPARE:{status}:{moves}:{optimal}:{efficiency:.3f}:{error_rate:.3f}")
+            else:
+                await self.send_line("")
+                await self.send_line("=" * 50)
+                await self.send_line("SOLVER COMPARISON")
+                await self.send_line("=" * 50)
+                await self.send_line(f"Status: {'SOLVED' if is_complete else 'IN PROGRESS'}")
+                await self.send_line("")
+                await self.send_line("Your Performance:")
+                await self.send_line(f"  Moves made: {moves}")
+                await self.send_line(f"  Invalid attempts: {self.current_game.invalid_moves}")
+                await self.send_line(f"  Hints used: {self.current_game.hints_used}")
+                await self.send_line("")
+                await self.send_line("Solver Reference:")
+                await self.send_line(f"  Optimal moves: {optimal}")
+                await self.send_line("")
+                await self.send_line("Metrics:")
+                await self.send_line(f"  Efficiency: {efficiency:.1%}")
+                await self.send_line(f"  Error rate: {error_rate:.1%}")
+                if is_complete:
+                    adjusted = efficiency * (
+                        1
+                        - self.current_game.solver_config.hint_penalty * (self.current_game.hints_used / max(1, moves))
+                    )
+                    await self.send_line(f"  Adjusted score: {adjusted:.1%}")
+                await self.send_line("=" * 50)
+            return
+
         if cmd_enum == GameCommand.HINT:
+            # Check if hints are allowed (via solver config)
+            if not self.current_game.record_hint():
+                await self.send_result(
+                    False, "Hints not available (budget exhausted or solver-free mode)", "HINT_DENIED"
+                )
+                return
+
             hint_result = await self.current_game.get_hint()
             if hint_result:
                 _, hint_message = hint_result
-                await self.send_line(f"Hint: {hint_message}")
+                if self.output_mode == OutputMode.STRICT:
+                    await self.send_line(f"HINT:{hint_message}")
+                else:
+                    await self.send_line(f"Hint: {hint_message}")
             else:
-                await self.send_line("No hints available. Puzzle is complete!")
+                await self.send_result(True, "No hints available. Puzzle is complete!", "HINT_NONE")
             return
 
         if cmd_enum == GameCommand.CHECK:
             if self.current_game.is_complete():
-                await self.send_line("\n" + "=" * 50)
-                await self.send_line("CONGRATULATIONS! PUZZLE SOLVED!")
-                await self.send_line("=" * 50)
-                await self.send_line(self.current_game.get_stats())
-                await self.send_line("\nType 'menu' to select another game.")
-                await self.send_line("=" * 50 + "\n")
+                await self.send_game_complete()
             else:
-                await self.send_line("Puzzle not yet complete. Keep going!")
-                await self.send_line(self.current_game.get_stats())
+                if self.output_mode == OutputMode.STRICT:
+                    await self.send_line(f"INCOMPLETE:{self.current_game.moves_made}")
+                else:
+                    await self.send_line("Puzzle not yet complete. Keep going!")
+                    await self.send_line(self.current_game.get_stats())
             return
 
         if cmd_enum == GameCommand.RESET:
@@ -341,34 +587,37 @@ class ArcadeHandler(TelnetHandler):
             if hasattr(self.current_game, "initial_grid"):
                 self.current_game.grid = [row[:] for row in self.current_game.initial_grid]  # type: ignore[attr-defined]
                 self.current_game.moves_made = 0
-                await self.send_line("Puzzle reset to initial state.")
+                self.current_game.invalid_moves = 0
+                self.current_game.hints_used = 0
+                await self.send_result(True, "Puzzle reset to initial state.", "RESET")
                 await self.display_puzzle()
             else:
-                await self.send_line("Reset not available for this game.")
+                await self.send_result(False, "Reset not available for this game.", "RESET_UNAVAILABLE")
             return
 
         # Delegate to game-specific command handler if available
         if self.game_handler and cmd_enum in self.game_handler.supported_commands:
             result = await self.game_handler.handle_command(cmd_enum, parts[1:])
-            await self.send_line(result.result.message)
+
+            # Track invalid moves
+            if not result.result.success:
+                self.current_game.invalid_moves += 1
+
+            # Send result based on output mode
+            code = "OK" if result.result.success else "INVALID"
+            await self.send_result(result.result.success, result.result.message, code)
 
             if result.should_display:
                 await self.display_puzzle()
 
             if result.is_game_over:
-                await self.send_line("\n" + "=" * 50)
-                await self.send_line("CONGRATULATIONS! YOU SOLVED IT!")
-                await self.send_line("=" * 50)
-                await self.send_line(self.current_game.get_stats())
-                await self.send_line("\nType 'menu' to play another game.")
-                await self.send_line("=" * 50 + "\n")
+                await self.send_game_complete()
             return
 
         # Legacy game-specific commands (for non-migrated games)
         if cmd_enum == GameCommand.PLACE:
             if len(parts) != 4:
-                await self.send_line("Usage: place <row> <col> <num>")
-                await self.send_line("Example: place 1 5 7")
+                await self.send_result(False, "Usage: place <row> <col> <num>", "USAGE")
                 return
 
             try:
@@ -377,26 +626,26 @@ class ArcadeHandler(TelnetHandler):
                 num = int(parts[3])
 
                 result = await self.current_game.validate_move(row, col, num)
-                await self.send_line(result.message)
+
+                if not result.success:
+                    self.current_game.invalid_moves += 1
+
+                await self.send_result(result.success, result.message, "PLACED" if result.success else "INVALID_MOVE")
 
                 if result.success:
                     await self.display_puzzle()
 
                     if self.current_game.is_complete():
-                        await self.send_line("\n" + "=" * 50)
-                        await self.send_line("CONGRATULATIONS! YOU SOLVED IT!")
-                        await self.send_line("=" * 50)
-                        await self.send_line(self.current_game.get_stats())
-                        await self.send_line("\nType 'menu' to play another game.")
-                        await self.send_line("=" * 50 + "\n")
+                        await self.send_game_complete()
 
             except ValueError:
-                await self.send_line("Invalid input. Use numbers only.")
+                self.current_game.invalid_moves += 1
+                await self.send_result(False, "Invalid input. Use numbers only.", "PARSE_ERROR")
             return
 
         if cmd_enum == GameCommand.CLEAR:
             if len(parts) != 3:
-                await self.send_line("Usage: clear <row> <col>")
+                await self.send_result(False, "Usage: clear <row> <col>", "USAGE")
                 return
 
             try:
@@ -404,31 +653,39 @@ class ArcadeHandler(TelnetHandler):
                 col = int(parts[2])
 
                 result = await self.current_game.validate_move(row, col, 0)
-                await self.send_line(result.message)
+
+                if not result.success:
+                    self.current_game.invalid_moves += 1
+
+                await self.send_result(result.success, result.message, "CLEARED" if result.success else "INVALID_CLEAR")
 
                 if result.success:
                     await self.display_puzzle()
 
             except ValueError:
-                await self.send_line("Invalid input. Use numbers only.")
+                self.current_game.invalid_moves += 1
+                await self.send_result(False, "Invalid input. Use numbers only.", "PARSE_ERROR")
             return
 
         if cmd_enum == GameCommand.SOLVE:
-            await self.send_line("\nShowing solution...\n")
             # Copy solution to grid (game-specific)
             if hasattr(self.current_game, "solution"):
                 self.current_game.grid = [row[:] for row in self.current_game.solution]  # type: ignore[attr-defined]
+                if self.output_mode == OutputMode.STRICT:
+                    await self.send_line("OK:SOLVED")
+                else:
+                    await self.send_line("\nShowing solution...\n")
                 await self.display_puzzle()
-                await self.send_line("Type 'menu' to play another game.")
+                if self.output_mode != OutputMode.STRICT:
+                    await self.send_line("Type 'menu' to play another game.")
             else:
-                await self.send_line("Solve not implemented for this game.")
+                await self.send_result(False, "Solve not implemented for this game.", "SOLVE_UNAVAILABLE")
             return
 
         # Lights Out specific command
         if cmd_enum == GameCommand.PRESS:
             if len(parts) != 3:
-                await self.send_line("Usage: press <row> <col>")
-                await self.send_line("Example: press 2 3")
+                await self.send_result(False, "Usage: press <row> <col>", "USAGE")
                 return
 
             try:
@@ -436,55 +693,64 @@ class ArcadeHandler(TelnetHandler):
                 col = int(parts[2])
 
                 result = await self.current_game.validate_move(row, col)
-                await self.send_line(result.message)
+
+                if not result.success:
+                    self.current_game.invalid_moves += 1
+
+                await self.send_result(result.success, result.message, "PRESSED" if result.success else "INVALID_PRESS")
 
                 if result.success:
                     await self.display_puzzle()
 
                     if self.current_game.is_complete():
-                        await self.send_line("\n" + "=" * 50)
-                        await self.send_line("CONGRATULATIONS! ALL LIGHTS OFF!")
-                        await self.send_line("=" * 50)
-                        await self.send_line(self.current_game.get_stats())
-                        await self.send_line("\nType 'menu' to play another game.")
-                        await self.send_line("=" * 50 + "\n")
+                        await self.send_game_complete()
 
             except ValueError:
-                await self.send_line("Invalid input. Use numbers only.")
+                self.current_game.invalid_moves += 1
+                await self.send_result(False, "Invalid input. Use numbers only.", "PARSE_ERROR")
             return
 
         # Logic Grid specific commands
         if cmd_enum == GameCommand.CONNECT:
             if len(parts) != 5:
-                await self.send_line("Usage: connect <cat1> <val1> <cat2> <val2>")
-                await self.send_line("Example: connect person Alice color Red")
+                await self.send_result(False, "Usage: connect <cat1> <val1> <cat2> <val2>", "USAGE")
                 return
 
             cat1, val1, cat2, val2 = parts[1], parts[2], parts[3], parts[4]
             result = await self.current_game.validate_move(cat1, val1, cat2, val2, True)
-            await self.send_line(result.message)
+
+            if not result.success:
+                self.current_game.invalid_moves += 1
+
+            await self.send_result(result.success, result.message, "CONNECTED" if result.success else "INVALID_CONNECT")
             if result.success:
                 await self.display_puzzle()
+                if self.current_game.is_complete():
+                    await self.send_game_complete()
             return
 
         if cmd_enum == GameCommand.EXCLUDE:
             if len(parts) != 5:
-                await self.send_line("Usage: exclude <cat1> <val1> <cat2> <val2>")
-                await self.send_line("Example: exclude person Bob pet Cat")
+                await self.send_result(False, "Usage: exclude <cat1> <val1> <cat2> <val2>", "USAGE")
                 return
 
             cat1, val1, cat2, val2 = parts[1], parts[2], parts[3], parts[4]
             result = await self.current_game.validate_move(cat1, val1, cat2, val2, False)
-            await self.send_line(result.message)
+
+            if not result.success:
+                self.current_game.invalid_moves += 1
+
+            await self.send_result(result.success, result.message, "EXCLUDED" if result.success else "INVALID_EXCLUDE")
             if result.success:
                 await self.display_puzzle()
+                if self.current_game.is_complete():
+                    await self.send_game_complete()
             return
 
         # Minesweeper commands
         if cmd_enum == GameCommand.REVEAL:
             if len(parts) != 3:
-                await self.send_line("Usage: reveal <row> <col>")
-                await self.send_line("Example: reveal 3 4")
+                await self.send_result(False, "Usage: reveal <row> <col>", "USAGE")
                 return
 
             try:
@@ -492,29 +758,38 @@ class ArcadeHandler(TelnetHandler):
                 col = int(parts[2])
 
                 result = await self.current_game.validate_move("reveal", row, col)
-                await self.send_line(result.message)
+
+                if not result.success:
+                    self.current_game.invalid_moves += 1
+
+                await self.send_result(
+                    result.success, result.message, "REVEALED" if result.success else "INVALID_REVEAL"
+                )
 
                 if result.success:
                     await self.display_puzzle()
 
                     if result.game_over:
-                        await self.send_line("\n" + "=" * 50)
                         if self.current_game.is_complete():
-                            await self.send_line("CONGRATULATIONS! YOU WIN!")
+                            await self.send_game_complete()
                         else:
-                            await self.send_line("GAME OVER! You hit a mine!")
-                        await self.send_line("=" * 50)
-                        await self.send_line("\nType 'menu' to play another game.")
-                        await self.send_line("=" * 50 + "\n")
+                            if self.output_mode == OutputMode.STRICT:
+                                await self.send_line(f"GAMEOVER:MINE:{self.current_game.moves_made}")
+                            else:
+                                await self.send_line("\n" + "=" * 50)
+                                await self.send_line("GAME OVER! You hit a mine!")
+                                await self.send_line("=" * 50)
+                                await self.send_line("\nType 'menu' to play another game.")
+                                await self.send_line("=" * 50 + "\n")
 
             except ValueError:
-                await self.send_line("Invalid input. Use numbers only.")
+                self.current_game.invalid_moves += 1
+                await self.send_result(False, "Invalid input. Use numbers only.", "PARSE_ERROR")
             return
 
         if cmd_enum == GameCommand.FLAG:
             if len(parts) != 3:
-                await self.send_line("Usage: flag <row> <col>")
-                await self.send_line("Example: flag 3 4")
+                await self.send_result(False, "Usage: flag <row> <col>", "USAGE")
                 return
 
             try:
@@ -522,21 +797,24 @@ class ArcadeHandler(TelnetHandler):
                 col = int(parts[2])
 
                 result = await self.current_game.validate_move("flag", row, col)
-                await self.send_line(result.message)
+
+                if not result.success:
+                    self.current_game.invalid_moves += 1
+
+                await self.send_result(result.success, result.message, "FLAGGED" if result.success else "INVALID_FLAG")
 
                 if result.success:
                     await self.display_puzzle()
 
             except ValueError:
-                await self.send_line("Invalid input. Use numbers only.")
+                self.current_game.invalid_moves += 1
+                await self.send_result(False, "Invalid input. Use numbers only.", "PARSE_ERROR")
             return
 
         # Slitherlink command
         if cmd_enum == GameCommand.SET:
             if len(parts) != 5:
-                await self.send_line("Usage: set <h|v> <row> <col> <state>")
-                await self.send_line("Example: set h 1 2 1  (set horizontal edge at row 1, col 2 to line)")
-                await self.send_line("States: 0=empty, 1=line, 2=X")
+                await self.send_result(False, "Usage: set <h|v> <row> <col> <state>", "USAGE")
                 return
 
             try:
@@ -546,102 +824,115 @@ class ArcadeHandler(TelnetHandler):
                 state = int(parts[4])
 
                 result = await self.current_game.validate_move(edge_type, row, col, state)
-                await self.send_line(result.message)
+
+                if not result.success:
+                    self.current_game.invalid_moves += 1
+
+                await self.send_result(result.success, result.message, "SET" if result.success else "INVALID_SET")
 
                 if result.success:
                     await self.display_puzzle()
 
                     if self.current_game.is_complete():
-                        await self.send_line("\n" + "=" * 50)
-                        await self.send_line("CONGRATULATIONS! LOOP COMPLETE!")
-                        await self.send_line("=" * 50)
-                        await self.send_line(self.current_game.get_stats())
-                        await self.send_line("\nType 'menu' to play another game.")
-                        await self.send_line("=" * 50 + "\n")
+                        await self.send_game_complete()
 
             except ValueError:
-                await self.send_line("Invalid input. Use numbers only for row, col, state.")
+                self.current_game.invalid_moves += 1
+                await self.send_result(False, "Invalid input. Use numbers only for row, col, state.", "PARSE_ERROR")
             return
 
         # Mastermind command
         if cmd_enum == GameCommand.GUESS:
             if len(parts) < 2:
-                await self.send_line("Usage: guess <color1> <color2> ... <colorN>")
-                await self.send_line("Example: guess 1 2 3 4")
+                await self.send_result(False, "Usage: guess <color1> <color2> ... <colorN>", "USAGE")
                 return
 
             try:
                 guess = [int(p) for p in parts[1:]]
 
                 result = await self.current_game.validate_move(*guess)
-                await self.send_line(result.message)
+
+                if not result.success:
+                    self.current_game.invalid_moves += 1
+
+                await self.send_result(result.success, result.message, "GUESSED" if result.success else "INVALID_GUESS")
 
                 if result.success:
                     await self.display_puzzle()
 
                     if self.current_game.is_complete():
+                        await self.send_game_complete()
+
+                if result.game_over and not self.current_game.is_complete():
+                    if self.output_mode == OutputMode.STRICT:
+                        await self.send_line(f"GAMEOVER:OUT_OF_GUESSES:{self.current_game.moves_made}")
+                    else:
                         await self.send_line("\n" + "=" * 50)
-                        await self.send_line("CONGRATULATIONS! CODE CRACKED!")
+                        await self.send_line("GAME OVER! Out of guesses!")
                         await self.send_line("=" * 50)
-                        await self.send_line(self.current_game.get_stats())
                         await self.send_line("\nType 'menu' to play another game.")
                         await self.send_line("=" * 50 + "\n")
 
-                if result.game_over and not self.current_game.is_complete():
-                    await self.send_line("\n" + "=" * 50)
-                    await self.send_line("GAME OVER! Out of guesses!")
-                    await self.send_line("=" * 50)
-                    await self.send_line("\nType 'menu' to play another game.")
-                    await self.send_line("=" * 50 + "\n")
-
             except ValueError:
-                await self.send_line("Invalid input. Use numbers only.")
+                self.current_game.invalid_moves += 1
+                await self.send_result(False, "Invalid input. Use numbers only.", "PARSE_ERROR")
             return
 
         # Knapsack commands
         if cmd_enum == GameCommand.SELECT:
             if len(parts) != 2:
-                await self.send_line("Usage: select <item_number>")
-                await self.send_line("Example: select 3")
+                await self.send_result(False, "Usage: select <item_number>", "USAGE")
                 return
 
             try:
                 item_index = int(parts[1])
 
                 result = await self.current_game.validate_move("select", item_index)
-                await self.send_line(result.message)
+
+                if not result.success:
+                    self.current_game.invalid_moves += 1
+
+                await self.send_result(
+                    result.success, result.message, "SELECTED" if result.success else "INVALID_SELECT"
+                )
 
                 if result.success:
                     await self.display_puzzle()
 
             except ValueError:
-                await self.send_line("Invalid input. Use numbers only.")
+                self.current_game.invalid_moves += 1
+                await self.send_result(False, "Invalid input. Use numbers only.", "PARSE_ERROR")
             return
 
         if cmd_enum == GameCommand.DESELECT:
             if len(parts) != 2:
-                await self.send_line("Usage: deselect <item_number>")
-                await self.send_line("Example: deselect 3")
+                await self.send_result(False, "Usage: deselect <item_number>", "USAGE")
                 return
 
             try:
                 item_index = int(parts[1])
 
                 result = await self.current_game.validate_move("deselect", item_index)
-                await self.send_line(result.message)
+
+                if not result.success:
+                    self.current_game.invalid_moves += 1
+
+                await self.send_result(
+                    result.success, result.message, "DESELECTED" if result.success else "INVALID_DESELECT"
+                )
 
                 if result.success:
                     await self.display_puzzle()
 
             except ValueError:
-                await self.send_line("Invalid input. Use numbers only.")
+                self.current_game.invalid_moves += 1
+                await self.send_result(False, "Invalid input. Use numbers only.", "PARSE_ERROR")
             return
 
         # Nurikabe command
         if cmd_enum == GameCommand.MARK:
             if len(parts) != 4:
-                await self.send_line("Usage: mark <row> <col> <white|black|clear>")
-                await self.send_line("Example: mark 2 3 black")
+                await self.send_result(False, "Usage: mark <row> <col> <white|black|clear>", "USAGE")
                 return
 
             try:
@@ -650,28 +941,27 @@ class ArcadeHandler(TelnetHandler):
                 color = parts[3].lower()
 
                 result = await self.current_game.validate_move(row, col, color)
-                await self.send_line(result.message)
+
+                if not result.success:
+                    self.current_game.invalid_moves += 1
+
+                await self.send_result(result.success, result.message, "MARKED" if result.success else "INVALID_MARK")
 
                 if result.success:
                     await self.display_puzzle()
 
                     if self.current_game.is_complete():
-                        await self.send_line("\n" + "=" * 50)
-                        await self.send_line("CONGRATULATIONS! PUZZLE SOLVED!")
-                        await self.send_line("=" * 50)
-                        await self.send_line(self.current_game.get_stats())
-                        await self.send_line("\nType 'menu' to play another game.")
-                        await self.send_line("=" * 50 + "\n")
+                        await self.send_game_complete()
 
             except ValueError:
-                await self.send_line("Invalid input. Row and col must be numbers.")
+                self.current_game.invalid_moves += 1
+                await self.send_result(False, "Invalid input. Row and col must be numbers.", "PARSE_ERROR")
             return
 
         # Hitori command
         if cmd_enum == GameCommand.SHADE:
             if len(parts) != 3:
-                await self.send_line("Usage: shade <row> <col>")
-                await self.send_line("Example: shade 2 3")
+                await self.send_result(False, "Usage: shade <row> <col>", "USAGE")
                 return
 
             try:
@@ -679,29 +969,27 @@ class ArcadeHandler(TelnetHandler):
                 col = int(parts[2])
 
                 result = await self.current_game.validate_move(row, col, "shade")
-                await self.send_line(result.message)
+
+                if not result.success:
+                    self.current_game.invalid_moves += 1
+
+                await self.send_result(result.success, result.message, "SHADED" if result.success else "INVALID_SHADE")
 
                 if result.success:
                     await self.display_puzzle()
 
                     if self.current_game.is_complete():
-                        await self.send_line("\n" + "=" * 50)
-                        await self.send_line("CONGRATULATIONS! PUZZLE SOLVED!")
-                        await self.send_line("=" * 50)
-                        await self.send_line(self.current_game.get_stats())
-                        await self.send_line("\nType 'menu' to play another game.")
-                        await self.send_line("=" * 50 + "\n")
+                        await self.send_game_complete()
 
             except ValueError:
-                await self.send_line("Invalid input. Use numbers only.")
+                self.current_game.invalid_moves += 1
+                await self.send_result(False, "Invalid input. Use numbers only.", "PARSE_ERROR")
             return
 
         # Bridges command
         if cmd_enum == GameCommand.BRIDGE:
             if len(parts) != 6:
-                await self.send_line("Usage: bridge <r1> <c1> <r2> <c2> <count>")
-                await self.send_line("Example: bridge 1 1 1 5 2  (double bridge from (1,1) to (1,5))")
-                await self.send_line("Use count=0 to remove a bridge")
+                await self.send_result(False, "Usage: bridge <r1> <c1> <r2> <c2> <count>", "USAGE")
                 return
 
             try:
@@ -712,53 +1000,52 @@ class ArcadeHandler(TelnetHandler):
                 count = int(parts[5])
 
                 result = await self.current_game.validate_move(r1, c1, r2, c2, count)
-                await self.send_line(result.message)
+
+                if not result.success:
+                    self.current_game.invalid_moves += 1
+
+                await self.send_result(
+                    result.success, result.message, "BRIDGED" if result.success else "INVALID_BRIDGE"
+                )
 
                 if result.success:
                     await self.display_puzzle()
 
                     if self.current_game.is_complete():
-                        await self.send_line("\n" + "=" * 50)
-                        await self.send_line("CONGRATULATIONS! ALL ISLANDS CONNECTED!")
-                        await self.send_line("=" * 50)
-                        await self.send_line(self.current_game.get_stats())
-                        await self.send_line("\nType 'menu' to play another game.")
-                        await self.send_line("=" * 50 + "\n")
+                        await self.send_game_complete()
 
             except ValueError:
-                await self.send_line("Invalid input. Use numbers only.")
+                self.current_game.invalid_moves += 1
+                await self.send_result(False, "Invalid input. Use numbers only.", "PARSE_ERROR")
             return
 
         # Sokoban command
         if cmd_enum == GameCommand.MOVE:
             if len(parts) != 2:
-                await self.send_line("Usage: move <direction>")
-                await self.send_line("Directions: up, down, left, right (or u, d, l, r)")
+                await self.send_result(False, "Usage: move <direction>", "USAGE")
                 return
 
             direction = parts[1].lower()
 
             result = await self.current_game.validate_move(direction)
-            await self.send_line(result.message)
+
+            if not result.success:
+                self.current_game.invalid_moves += 1
+
+            await self.send_result(result.success, result.message, "MOVED" if result.success else "INVALID_MOVE")
 
             if result.success:
                 await self.display_puzzle()
 
                 if self.current_game.is_complete():
-                    await self.send_line("\n" + "=" * 50)
-                    await self.send_line("CONGRATULATIONS! ALL BOXES ON TARGETS!")
-                    await self.send_line("=" * 50)
-                    await self.send_line(self.current_game.get_stats())
-                    await self.send_line("\nType 'menu' to play another game.")
-                    await self.send_line("=" * 50 + "\n")
+                    await self.send_game_complete()
 
             return
 
         # Scheduler commands
         if cmd_enum == GameCommand.ASSIGN:
             if len(parts) != 4:
-                await self.send_line("Usage: assign <task_id> <worker_id> <start_time>")
-                await self.send_line("Example: assign 1 2 0")
+                await self.send_result(False, "Usage: assign <task_id> <worker_id> <start_time>", "USAGE")
                 return
 
             try:
@@ -767,35 +1054,50 @@ class ArcadeHandler(TelnetHandler):
                 start_time = int(parts[3])
 
                 result = await self.current_game.validate_move(task_id, worker_id, start_time)
-                await self.send_line(result.message)
+
+                if not result.success:
+                    self.current_game.invalid_moves += 1
+
+                await self.send_result(
+                    result.success, result.message, "ASSIGNED" if result.success else "INVALID_ASSIGN"
+                )
 
                 if result.success:
                     await self.display_puzzle()
+                    if self.current_game.is_complete():
+                        await self.send_game_complete()
 
             except ValueError:
-                await self.send_line("Invalid input. Use numbers only.")
+                self.current_game.invalid_moves += 1
+                await self.send_result(False, "Invalid input. Use numbers only.", "PARSE_ERROR")
             return
 
         if cmd_enum == GameCommand.UNASSIGN:
             if len(parts) != 2:
-                await self.send_line("Usage: unassign <task_id>")
-                await self.send_line("Example: unassign 1")
+                await self.send_result(False, "Usage: unassign <task_id>", "USAGE")
                 return
 
             try:
                 task_id = int(parts[1])
 
                 result = await self.current_game.validate_move(task_id, 0, -1)
-                await self.send_line(result.message)
+
+                if not result.success:
+                    self.current_game.invalid_moves += 1
+
+                await self.send_result(
+                    result.success, result.message, "UNASSIGNED" if result.success else "INVALID_UNASSIGN"
+                )
 
                 if result.success:
                     await self.display_puzzle()
 
             except ValueError:
-                await self.send_line("Invalid input. Use numbers only.")
+                self.current_game.invalid_moves += 1
+                await self.send_result(False, "Invalid input. Use numbers only.", "PARSE_ERROR")
             return
 
-        await self.send_line("Unknown command. Type 'help' for available commands.")
+        await self.send_result(False, "Unknown command. Type 'help' for available commands.", "UNKNOWN_CMD")
 
     async def on_command_submitted(self, command: str) -> None:
         """Process a command from the player.

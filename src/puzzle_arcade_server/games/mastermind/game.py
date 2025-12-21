@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from ...models import MoveResult
+from ...models import DifficultyProfile, MoveResult
 from .._base import PuzzleGame
 from .config import MastermindConfig
 
@@ -15,13 +15,13 @@ class MastermindGame(PuzzleGame):
     and white pegs (correct color, wrong position).
     """
 
-    def __init__(self, difficulty: str = "easy", seed: int | None = None):
+    def __init__(self, difficulty: str = "easy", seed: int | None = None, **kwargs):
         """Initialize a new Mastermind game.
 
         Args:
             difficulty: Game difficulty level (easy/medium/hard)
         """
-        super().__init__(difficulty, seed)
+        super().__init__(difficulty, seed, **kwargs)
 
         # Use pydantic config based on difficulty
         self.config = MastermindConfig.from_difficulty(self.difficulty)
@@ -71,6 +71,30 @@ class MastermindGame(PuzzleGame):
     def complexity_profile(self) -> dict[str, str]:
         """Complexity profile of this puzzle."""
         return {"reasoning_type": "hybrid", "search_space": "exponential", "constraint_density": "sparse"}
+
+    @property
+    def optimal_steps(self) -> int | None:
+        """Optimal guesses for Mastermind with hints = 1 (hint reveals code)."""
+        # With hints, the code is revealed directly, so optimal is 1
+        return 1
+
+    @property
+    def difficulty_profile(self) -> "DifficultyProfile":
+        """Difficulty characteristics for Mastermind."""
+        from ...models import DifficultyLevel
+
+        logic_depth = {
+            DifficultyLevel.EASY.value: 2,
+            DifficultyLevel.MEDIUM.value: 4,
+            DifficultyLevel.HARD.value: 5,
+        }.get(self.difficulty.value, 3)
+        branching = self.num_colors**self.code_length  # Huge search space
+        return DifficultyProfile(
+            logic_depth=logic_depth,
+            branching_factor=min(10.0, branching / 100),  # Normalized
+            state_observability=0.3,  # Hidden code
+            constraint_density=0.2,
+        )
 
     async def generate_puzzle(self) -> None:
         """Generate a new Mastermind puzzle."""

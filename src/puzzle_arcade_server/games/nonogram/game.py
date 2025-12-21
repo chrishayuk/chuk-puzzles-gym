@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from ...models import DifficultyLevel, MoveResult
+from ...models import DifficultyLevel, DifficultyProfile, MoveResult
 from .._base import PuzzleGame
 from .config import NonogramConfig
 
@@ -14,13 +14,13 @@ class NonogramGame(PuzzleGame):
     Clues indicate consecutive filled cells in that row/column.
     """
 
-    def __init__(self, difficulty: str = "easy", seed: int | None = None):
+    def __init__(self, difficulty: str = "easy", seed: int | None = None, **kwargs):
         """Initialize a new Nonogram game.
 
         Args:
             difficulty: Game difficulty level (easy=5x5, medium=7x7, hard=10x10)
         """
-        super().__init__(difficulty, seed)
+        super().__init__(difficulty, seed, **kwargs)
 
         # Use pydantic config based on difficulty
         self.config = NonogramConfig.from_difficulty(self.difficulty)
@@ -59,6 +59,32 @@ class NonogramGame(PuzzleGame):
     def complexity_profile(self) -> dict[str, str]:
         """Complexity profile of this puzzle."""
         return {"reasoning_type": "deductive", "search_space": "large", "constraint_density": "dense"}
+
+    @property
+    def optimal_steps(self) -> int | None:
+        """Minimum steps = all cells to mark (filled=1 and empty=0)."""
+        if not hasattr(self, "solution") or not self.solution:
+            return None
+        # Count both filled (1) and empty (0) cells - all need to be marked
+        return sum(
+            1 for r in range(len(self.solution)) for c in range(len(self.solution[0])) if self.solution[r][c] in (0, 1)
+        )
+
+    @property
+    def difficulty_profile(self) -> "DifficultyProfile":
+        """Difficulty characteristics for Nonogram."""
+
+        logic_depth = {
+            DifficultyLevel.EASY.value: 2,
+            DifficultyLevel.MEDIUM.value: 4,
+            DifficultyLevel.HARD.value: 5,
+        }.get(self.difficulty.value, 3)
+        return DifficultyProfile(
+            logic_depth=logic_depth,
+            branching_factor=2.0,
+            state_observability=1.0,
+            constraint_density=0.5,
+        )
 
     def _calculate_clues(self, line: list[int]) -> list[int]:
         """Calculate clues for a line (row or column).

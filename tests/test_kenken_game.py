@@ -340,3 +340,14 @@ class TestKenKenGame:
         assert "reasoning_type" in profile
         assert "search_space" in profile
         assert "constraint_density" in profile
+
+    async def test_difficulty_profile(self):
+        """Test difficulty profile across all difficulties."""
+        for difficulty in ["easy", "medium", "hard"]:
+            game = KenKenGame(difficulty)
+            await game.generate_puzzle()
+            profile = game.difficulty_profile
+            assert profile.logic_depth > 0
+            assert profile.branching_factor > 0
+            assert profile.state_observability == 1.0
+            assert 0 <= profile.constraint_density <= 1
