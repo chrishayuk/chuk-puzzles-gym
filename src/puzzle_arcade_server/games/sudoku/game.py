@@ -48,6 +48,26 @@ class SudokuGame(PuzzleGame):
         """Complexity profile of this puzzle."""
         return {"reasoning_type": "deductive", "search_space": "large", "constraint_density": "moderate"}
 
+    @property
+    def complexity_metrics(self) -> dict[str, int | float]:
+        """Quantified complexity metrics for this Sudoku puzzle."""
+        empty_cells = sum(1 for r in range(9) for c in range(9) if self.grid[r][c] == 0)
+        # Sudoku has 27 AllDifferent constraints: 9 rows + 9 cols + 9 boxes
+        constraint_count = 27
+        # 81 cells total, domain is 1-9
+        variable_count = 81
+        domain_size = 9
+        # Branching factor depends on how constrained each cell is
+        # For a well-formed puzzle, average is around 2-3
+        branching_factor = 2.5 if empty_cells > 0 else 0.0
+        return {
+            "variable_count": variable_count,
+            "constraint_count": constraint_count,
+            "domain_size": domain_size,
+            "branching_factor": branching_factor,
+            "empty_cells": empty_cells,
+        }
+
     def is_valid_move(self, row: int, col: int, num: int, grid: list[list[int]] | None = None) -> bool:
         """Check if placing num at (row, col) is valid according to sudoku rules.
 

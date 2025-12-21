@@ -131,48 +131,112 @@ class BinaryPuzzleGame(PuzzleGame):
 
         return True
 
-    async def generate_puzzle(self) -> None:
-        """Generate a new Binary Puzzle."""
-        # Start with a simple pattern that satisfies constraints
-        # Alternating pattern with some randomness
+    def _verify_binary_solution(self) -> bool:
+        """Verify the solution satisfies all binary puzzle constraints."""
+        # Check all rows
+        for row in range(self.size):
+            row_vals = self.solution[row]
+            if row_vals.count(0) != self.size // 2 or row_vals.count(1) != self.size // 2:
+                return False
+            # Check no three consecutive
+            for col in range(self.size - 2):
+                if row_vals[col] == row_vals[col + 1] == row_vals[col + 2]:
+                    return False
+
+        # Check all columns
+        for col in range(self.size):
+            col_vals = [self.solution[r][col] for r in range(self.size)]
+            if col_vals.count(0) != self.size // 2 or col_vals.count(1) != self.size // 2:
+                return False
+            # Check no three consecutive
+            for row in range(self.size - 2):
+                if col_vals[row] == col_vals[row + 1] == col_vals[row + 2]:
+                    return False
+
+        return True
+
+    def _create_fallback_binary_solution(self) -> None:
+        """Create a simple valid binary solution using alternating pattern."""
+        # Use a known valid pattern: alternating 0011 style
         self.solution = [[0 for _ in range(self.size)] for _ in range(self.size)]
 
-        # Create a simple valid solution
         for row in range(self.size):
-            # Create pattern with equal 0s and 1s
-            pattern = [0] * (self.size // 2) + [1] * (self.size // 2)
+            for col in range(self.size):
+                # Create a pattern that avoids three consecutive
+                # Pattern: 0,0,1,1,0,0 for even rows, 1,1,0,0,1,1 for odd rows
+                block = (col // 2) % 2
+                if row % 2 == 1:
+                    block = 1 - block
+                self.solution[row][col] = block
+
+    def _generate_valid_binary_row(self, row: int) -> list[int] | None:
+        """Generate a valid row that satisfies all constraints.
+
+        Args:
+            row: Row index to generate
+
+        Returns:
+            Valid pattern or None if generation fails
+        """
+        # Create pattern with equal 0s and 1s
+        pattern = [0] * (self.size // 2) + [1] * (self.size // 2)
+
+        for _ in range(200):
             self._rng.shuffle(pattern)
 
-            # Ensure no three consecutive
-            valid = False
-            attempts = 0
-            while not valid and attempts < 100:
-                self._rng.shuffle(pattern)
-                self.solution[row] = pattern[:]
+            # Check this row doesn't have three consecutive
+            has_three = False
+            for col in range(self.size - 2):
+                if pattern[col] == pattern[col + 1] == pattern[col + 2]:
+                    has_three = True
+                    break
 
-                # Check this row doesn't have three consecutive
-                has_three = False
-                for col in range(self.size - 2):
-                    if pattern[col] == pattern[col + 1] == pattern[col + 2]:
-                        has_three = True
+            if has_three:
+                continue
+
+            # Check column constraints so far
+            valid = True
+            for col in range(self.size):
+                col_vals = [self.solution[r][col] for r in range(row)] + [pattern[col]]
+                if col_vals.count(0) > self.size // 2 or col_vals.count(1) > self.size // 2:
+                    valid = False
+                    break
+
+                # Check no three consecutive in column
+                if row >= 2:
+                    if pattern[col] == self.solution[row - 1][col] == self.solution[row - 2][col]:
+                        valid = False
                         break
 
-                if not has_three:
-                    # Check column constraints so far
-                    valid = True
-                    for col in range(self.size):
-                        col_vals = [self.solution[r][col] for r in range(row + 1)]
-                        if col_vals.count(0) > self.size // 2 or col_vals.count(1) > self.size // 2:
-                            valid = False
-                            break
+            if valid:
+                return pattern[:]
 
-                        # Check no three consecutive in column
-                        if row >= 2:
-                            if self.solution[row][col] == self.solution[row - 1][col] == self.solution[row - 2][col]:
-                                valid = False
-                                break
+        return None
 
-                attempts += 1
+    async def generate_puzzle(self) -> None:
+        """Generate a new Binary Puzzle."""
+        max_restarts = 20
+
+        for _ in range(max_restarts):
+            # Start with empty solution
+            self.solution = [[0 for _ in range(self.size)] for _ in range(self.size)]
+
+            # Try to generate each row
+            success = True
+            for row in range(self.size):
+                pattern = self._generate_valid_binary_row(row)
+                if pattern is None:
+                    success = False
+                    break
+                self.solution[row] = pattern
+
+            if success:
+                # Verify the solution
+                if self._verify_binary_solution():
+                    break
+        else:
+            # Fallback: use a simple alternating pattern
+            self._create_fallback_binary_solution()
 
         # Remove some cells based on difficulty
         cells_to_remove_map = {

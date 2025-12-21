@@ -159,7 +159,10 @@ class KillerSudokuGame(PuzzleGame):
         return True
 
     def _generate_cages(self) -> None:
-        """Generate cages for the puzzle."""
+        """Generate cages for the puzzle.
+
+        In Killer Sudoku, each cage must have unique values.
+        """
         used = [[False for _ in range(9)] for _ in range(9)]
         self.cages = []
 
@@ -171,51 +174,55 @@ class KillerSudokuGame(PuzzleGame):
                 # Start a new cage
                 cage_size = self._rng.randint(2, 4)  # 2-4 cells per cage
                 cells = [(row, col)]
+                cage_values = {self.solution[row][col]}
                 used[row][col] = True
 
-                # Try to add more cells
+                # Try to add more cells (must have unique values)
                 for _ in range(cage_size - 1):
-                    # Find adjacent unused cells
+                    # Find adjacent unused cells with unique values
                     candidates = []
                     for r, c in cells:
                         for dr, dc in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
                             nr, nc = r + dr, c + dc
                             if 0 <= nr < 9 and 0 <= nc < 9 and not used[nr][nc]:
-                                if (nr, nc) not in candidates:  # Avoid duplicates
-                                    candidates.append((nr, nc))
+                                if (nr, nc) not in candidates:
+                                    # Check if value is unique in this cage
+                                    if self.solution[nr][nc] not in cage_values:
+                                        candidates.append((nr, nc))
 
                     if candidates:
                         nr, nc = self._rng.choice(candidates)
                         cells.append((nr, nc))
+                        cage_values.add(self.solution[nr][nc])
                         used[nr][nc] = True
                     else:
-                        # No adjacent cells available, stop growing this cage
+                        # No valid adjacent cells available
                         break
 
                 # If cage is still size 1, try to merge with an adjacent cage
                 if len(cells) == 1:
                     r, c = cells[0]
-                    # Find an adjacent cage to merge with
+                    cell_value = self.solution[r][c]
                     merged = False
                     for dr, dc in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
                         nr, nc = r + dr, c + dc
                         if 0 <= nr < 9 and 0 <= nc < 9:
-                            # Find cage containing this cell
                             for cage_idx, cage in enumerate(self.cages):
                                 if (nr, nc) in cage.cells:
-                                    # Merge this cell into the adjacent cage
-                                    new_cells = list(cage.cells)
-                                    new_cells.append((r, c))
-                                    # Recalculate sum
-                                    new_sum = sum(self.solution[r][c] for r, c in new_cells)
-                                    self.cages[cage_idx] = Cage(cells=new_cells, operation=None, target=new_sum)
-                                    merged = True
-                                    break
+                                    # Check if we can merge without duplicating values
+                                    cage_vals = {self.solution[cr][cc] for cr, cc in cage.cells}
+                                    if cell_value not in cage_vals:
+                                        new_cells = list(cage.cells)
+                                        new_cells.append((r, c))
+                                        new_sum = sum(self.solution[cr][cc] for cr, cc in new_cells)
+                                        self.cages[cage_idx] = Cage(cells=new_cells, operation=None, target=new_sum)
+                                        merged = True
+                                        break
                         if merged:
                             break
 
                     if not merged:
-                        # Couldn't merge, just add as size-1 cage
+                        # Couldn't merge, add as size-1 cage
                         target_sum = self.solution[r][c]
                         self.cages.append(Cage(cells=cells, operation=None, target=target_sum))
                 else:
@@ -225,22 +232,48 @@ class KillerSudokuGame(PuzzleGame):
 
     async def generate_puzzle(self) -> None:
         """Generate a new Killer Sudoku puzzle."""
-        # Generate a valid Latin square as solution
+        # Generate a valid Sudoku solution
         self.grid = [[0 for _ in range(9)] for _ in range(9)]
 
-        # Simple solution generation: shifted rows
+        # Base valid Sudoku pattern
         for row in range(9):
             for col in range(9):
                 self.grid[row][col] = (row * 3 + row // 3 + col) % 9 + 1
 
-        # Shuffle to make it more random
-        row_perm = list(range(9))
-        col_perm = list(range(9))
-        self._rng.shuffle(row_perm)
-        self._rng.shuffle(col_perm)
+        # Shuffle rows within bands and columns within stacks to maintain validity
+        for band in range(3):
+            # Shuffle rows within this band
+            rows_in_band = [band * 3, band * 3 + 1, band * 3 + 2]
+            shuffled_rows = rows_in_band[:]
+            self._rng.shuffle(shuffled_rows)
+            # Swap rows
+            temp = [self.grid[shuffled_rows[0]][:], self.grid[shuffled_rows[1]][:], self.grid[shuffled_rows[2]][:]]
+            for i, r in enumerate(rows_in_band):
+                self.grid[r] = temp[i]
 
-        shuffled = [[self.grid[row_perm[r]][col_perm[c]] for c in range(9)] for r in range(9)]
-        self.solution = shuffled
+        for stack in range(3):
+            # Shuffle columns within this stack
+            cols_in_stack = [stack * 3, stack * 3 + 1, stack * 3 + 2]
+            shuffled_cols = cols_in_stack[:]
+            self._rng.shuffle(shuffled_cols)
+            # Swap columns
+            for row in range(9):
+                col_temp = [
+                    self.grid[row][shuffled_cols[0]],
+                    self.grid[row][shuffled_cols[1]],
+                    self.grid[row][shuffled_cols[2]],
+                ]
+                for i, c in enumerate(cols_in_stack):
+                    self.grid[row][c] = col_temp[i]
+
+        # Also shuffle digit mapping for more variety
+        digit_map = list(range(1, 10))
+        self._rng.shuffle(digit_map)
+        for row in range(9):
+            for col in range(9):
+                self.grid[row][col] = digit_map[self.grid[row][col] - 1]
+
+        self.solution = [row[:] for row in self.grid]
 
         # Generate cages
         self._generate_cages()

@@ -41,6 +41,7 @@ dev = [
 
 [project.scripts]
 puzzle-arcade-server = "puzzle_arcade_server.server:run_server"
+puzzle-arcade-eval = "puzzle_arcade_server.eval:main"
 
 [project.urls]
 Homepage = "https://github.com/chrishayuk/puzzle-arcade-server"

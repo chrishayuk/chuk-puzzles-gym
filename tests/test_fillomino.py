@@ -294,3 +294,113 @@ class TestFillominoGame:
         visited = {(0, 0)}
         region = game._find_region(game.solution, 0, 0, visited)
         assert len(region) == 0  # Already visited
+
+    async def test_try_grow_region(self):
+        """Test _try_grow_region helper method."""
+        game = FillominoGame("easy")
+        game.solution = [[0 for _ in range(game.size)] for _ in range(game.size)]
+
+        # Try to grow a region of size 2
+        region = game._try_grow_region(1, 1, 2)
+        if region:
+            assert len(region) == 2
+
+    async def test_try_grow_region_blocked(self):
+        """Test _try_grow_region when blocked."""
+        game = FillominoGame("easy")
+        # Fill the solution to block growth
+        game.solution = [[3 for _ in range(game.size)] for _ in range(game.size)]
+        game.solution[1][1] = 0
+
+        # Try to grow a region - should be blocked by existing values
+        region = game._try_grow_region(1, 1, 3)
+        # May return None if blocked
+        assert region is None or len(region) <= 3
+
+    async def test_create_fallback_solution(self):
+        """Test fallback solution creation."""
+        game = FillominoGame("easy")
+        game.solution = [[0 for _ in range(game.size)] for _ in range(game.size)]
+
+        game._create_fallback_solution()
+
+        # All cells should be filled
+        assert all(game.solution[r][c] > 0 for r in range(game.size) for c in range(game.size))
+
+    async def test_is_valid_region_placement(self):
+        """Test _is_valid_region_placement method."""
+        game = FillominoGame("easy")
+        game.solution = [[0 for _ in range(game.size)] for _ in range(game.size)]
+
+        # Valid placement - no adjacent same-size regions
+        region = [(1, 1), (1, 2)]
+        result = game._is_valid_region_placement(game.solution, region, 2)
+        assert result is True
+
+        # Invalid - adjacent 2-region exists
+        game.solution[1][3] = 2
+        result = game._is_valid_region_placement(game.solution, region, 2)
+        assert result is False
+
+    async def test_verify_solution(self):
+        """Test _verify_solution method."""
+        game = FillominoGame("easy")
+        await game.generate_puzzle()
+
+        # The generated solution should be valid
+        result = game._verify_solution()
+        assert result is True
+
+    async def test_verify_solution_incomplete(self):
+        """Test _verify_solution with incomplete solution."""
+        game = FillominoGame("easy")
+        game.solution = [[0 for _ in range(game.size)] for _ in range(game.size)]
+
+        # Empty solution is not valid
+        result = game._verify_solution()
+        assert result is False
+
+    async def test_verify_solution_wrong_size(self):
+        """Test _verify_solution with wrong region sizes."""
+        game = FillominoGame("easy")
+        game.solution = [[3 for _ in range(game.size)] for _ in range(game.size)]
+
+        # All 3s means each region has size much > 3, so invalid
+        result = game._verify_solution()
+        assert result is False
+
+    async def test_generate_puzzle_multiple_attempts(self):
+        """Test puzzle generation with multiple seeds."""
+        for seed in [1, 42, 123, 456]:
+            game = FillominoGame("easy", seed=seed)
+            await game.generate_puzzle()
+            assert game._verify_solution()
+
+    async def test_solve_with_hints(self):
+        """Test solving using hints."""
+        game = FillominoGame("easy", seed=42)
+        await game.generate_puzzle()
+
+        # Use hints to solve
+        for _ in range(100):
+            if game.is_complete():
+                break
+            hint = await game.get_hint()
+            if hint is None:
+                break
+            hint_data, _ = hint
+            await game.validate_move(hint_data[0], hint_data[1], hint_data[2])
+
+        # Should be complete
+        assert game.is_complete()
+
+    async def test_hint_no_empty_cells(self):
+        """Test hint when no empty cells."""
+        game = FillominoGame("easy")
+        await game.generate_puzzle()
+
+        # Fill all cells with solution
+        game.grid = [row[:] for row in game.solution]
+
+        hint = await game.get_hint()
+        assert hint is None  # No hints needed

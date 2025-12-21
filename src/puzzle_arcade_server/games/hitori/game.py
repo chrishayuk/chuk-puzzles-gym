@@ -182,7 +182,31 @@ class HitoriGame(PuzzleGame):
                 self.game_started = True
                 return
 
-        # Fallback: use last attempt
+        # Fallback: Generate a simple, always-valid puzzle
+        # Reset to a simple latin square with minimal duplicates
+        for r in range(self.size):
+            for c in range(self.size):
+                self.grid[r][c] = ((r + c) % self.size) + 1
+                self.solution[r][c] = False
+
+        # Add exactly one duplicate per row that can be safely shaded
+        for r in range(self.size):
+            # Find a cell where shading won't break connectivity
+            # (never shade edge cells or adjacent to already shaded)
+            c = r % (self.size - 2) + 1  # Stay away from edges
+            if not self._has_adjacent_shaded(r, c, self.solution):
+                # Copy a value to create a duplicate
+                self.grid[r][c] = self.grid[r][(c + 1) % self.size]
+                self.solution[r][c] = True
+
+        # Verify fallback is valid
+        if not self._validate_solution():
+            # Last resort: no duplicates at all (trivial puzzle)
+            for r in range(self.size):
+                for c in range(self.size):
+                    self.grid[r][c] = ((r + c) % self.size) + 1
+                    self.solution[r][c] = False
+
         self.game_started = True
 
     def _validate_solution(self) -> bool:

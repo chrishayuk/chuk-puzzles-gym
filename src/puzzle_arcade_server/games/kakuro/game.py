@@ -61,22 +61,99 @@ class KakuroGame(PuzzleGame):
         """Complexity profile of this puzzle."""
         return {"reasoning_type": "deductive", "search_space": "medium", "constraint_density": "moderate"}
 
+    def _is_cell_in_run(self, row: int, col: int) -> bool:
+        """Check if a cell is part of at least one run of length >= 2."""
+        if self.grid[row][col] == -1:
+            return True  # Black cells don't need to be in runs
+
+        # Check horizontal run
+        h_count = 1
+        # Count left
+        c = col - 1
+        while c >= 0 and self.grid[row][c] != -1:
+            h_count += 1
+            c -= 1
+        # Count right
+        c = col + 1
+        while c < self.size and self.grid[row][c] != -1:
+            h_count += 1
+            c += 1
+
+        if h_count >= 2:
+            return True
+
+        # Check vertical run
+        v_count = 1
+        # Count up
+        r = row - 1
+        while r >= 0 and self.grid[r][col] != -1:
+            v_count += 1
+            r -= 1
+        # Count down
+        r = row + 1
+        while r < self.size and self.grid[r][col] != -1:
+            v_count += 1
+            r += 1
+
+        return v_count >= 2
+
     def _create_pattern(self) -> None:
-        """Create a pattern of black and white cells."""
-        # Simple pattern: create some black cells
+        """Create a pattern of black and white cells ensuring all white cells are in runs."""
+        max_attempts = 50
+
+        for _attempt in range(max_attempts):
+            # Simple pattern: create some black cells
+            self.grid = [[0 for _ in range(self.size)] for _ in range(self.size)]
+
+            # Make top-left corner black (standard Kakuro pattern)
+            self.grid[0][0] = -1
+
+            # Add first row and first column as black (clue cells)
+            # This creates a more standard Kakuro layout
+            if self.size >= 4:
+                # Make first column mostly black for clues
+                for r in range(self.size):
+                    if self._rng.random() < 0.5:
+                        self.grid[r][0] = -1
+
+            # Add some random black cells to create runs
+            num_black = self.size // 2
+            for _ in range(num_black):
+                row = self._rng.randint(1, self.size - 1)
+                col = self._rng.randint(1, self.size - 1)
+                if self.grid[row][col] == 0:
+                    self.grid[row][col] = -1
+
+            # Verify all white cells are in runs of length >= 2
+            all_valid = True
+            for r in range(self.size):
+                for c in range(self.size):
+                    if self.grid[r][c] == 0 and not self._is_cell_in_run(r, c):
+                        # This cell is orphaned - make it black
+                        self.grid[r][c] = -1
+
+            # Re-check that we still have enough white cells
+            white_count = sum(1 for r in range(self.size) for c in range(self.size) if self.grid[r][c] == 0)
+            if white_count >= self.size * 2:  # Need at least some playable cells
+                # Final verification
+                all_valid = True
+                for r in range(self.size):
+                    for c in range(self.size):
+                        if self.grid[r][c] == 0 and not self._is_cell_in_run(r, c):
+                            all_valid = False
+                            break
+                    if not all_valid:
+                        break
+
+                if all_valid:
+                    return
+
+        # Fallback: create a simple valid pattern
         self.grid = [[0 for _ in range(self.size)] for _ in range(self.size)]
-
-        # Make diagonal black cells
-        for i in range(min(2, self.size)):
-            self.grid[i][i] = -1
-
-        # Add some random black cells to create runs
-        num_black = self.size // 2
-        for _ in range(num_black):
-            row = self._rng.randint(0, self.size - 1)
-            col = self._rng.randint(0, self.size - 1)
-            if self.grid[row][col] == 0:
-                self.grid[row][col] = -1
+        self.grid[0][0] = -1
+        # Make a simple cross pattern
+        mid = self.size // 2
+        self.grid[mid][mid] = -1
 
     def _find_runs(self) -> list[tuple[int, int, str, list[tuple[int, int]]]]:
         """Find all runs (sequences of white cells) in the grid.

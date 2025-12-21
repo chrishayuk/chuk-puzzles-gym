@@ -241,17 +241,27 @@ class BridgesGame(PuzzleGame):
 
         return len(visited) == len(self.islands)
 
+    def _would_cross_existing(self, r1: int, c1: int, r2: int, c2: int) -> bool:
+        """Check if a new bridge would cross any existing bridge in the solution."""
+        for (br1, bc1, br2, bc2), bcount in self.solution.items():
+            if bcount > 0:
+                if self._bridges_cross(r1, c1, r2, c2, br1, bc1, br2, bc2):
+                    return True
+        return False
+
     def _generate_solution(self) -> None:
-        """Generate a valid solution for the puzzle."""
+        """Generate a valid solution for the puzzle without crossing bridges."""
         if not self.islands:
             return
 
         # Create a minimum spanning tree using a simple approach
+        # but only add bridges that don't cross existing ones
         connected = {self.islands[0]}
         unconnected = set(self.islands[1:])
 
         while unconnected:
             # Find the closest unconnected island to any connected island
+            # that can be connected without crossing
             best_dist = float("inf")
             best_pair = None
 
@@ -259,10 +269,12 @@ class BridgesGame(PuzzleGame):
                 neighbors = self._find_neighbors(r1, c1)
                 for r2, c2 in neighbors:
                     if (r2, c2) in unconnected:
-                        dist = abs(r1 - r2) + abs(c1 - c2)
-                        if dist < best_dist:
-                            best_dist = dist
-                            best_pair = ((r1, c1), (r2, c2))
+                        # Check if this bridge would cross existing ones
+                        if not self._would_cross_existing(r1, c1, r2, c2):
+                            dist = abs(r1 - r2) + abs(c1 - c2)
+                            if dist < best_dist:
+                                best_dist = dist
+                                best_pair = ((r1, c1), (r2, c2))
 
             if best_pair:
                 (r1, c1), (r2, c2) = best_pair
@@ -274,6 +286,7 @@ class BridgesGame(PuzzleGame):
                 break
 
         # Add some additional bridges for variety (up to 2 bridges per connection)
+        # Only if they don't create crossings
         for r1, c1 in self.islands:
             neighbors = self._find_neighbors(r1, c1)
             for r2, c2 in neighbors:

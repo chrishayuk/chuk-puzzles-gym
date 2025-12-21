@@ -62,9 +62,221 @@ class SokobanGame(PuzzleGame):
         """Complexity profile of this puzzle."""
         return {"reasoning_type": "optimization", "search_space": "exponential", "constraint_density": "sparse"}
 
+    def _is_corner(self, r: int, c: int) -> bool:
+        """Check if a position is a corner (would trap a box)."""
+        # Check all four corner configurations
+        corners = [
+            [(0, -1), (-1, 0)],  # top-left corner
+            [(0, 1), (-1, 0)],  # top-right corner
+            [(0, -1), (1, 0)],  # bottom-left corner
+            [(0, 1), (1, 0)],  # bottom-right corner
+        ]
+        for (dr1, dc1), (dr2, dc2) in corners:
+            nr1, nc1 = r + dr1, c + dc1
+            nr2, nc2 = r + dr2, c + dc2
+            # Check if both adjacent cells are walls
+            wall1 = not (0 <= nr1 < self.size and 0 <= nc1 < self.size) or self.grid[nr1][nc1] == 1
+            wall2 = not (0 <= nr2 < self.size and 0 <= nc2 < self.size) or self.grid[nr2][nc2] == 1
+            if wall1 and wall2:
+                return True
+        return False
+
+    def _can_push_to_goal(self, box_r: int, box_c: int, goal_r: int, goal_c: int) -> bool:
+        """Check if a box can be pushed from box position to goal position.
+
+        For simple evaluation, we require box and goal to be on same row or column
+        with no walls between them and push space available.
+        """
+        if box_r == goal_r:
+            # Same row - check horizontal push
+            if box_c < goal_c:
+                # Push right - need empty space to left of box
+                if box_c - 1 < 1:
+                    return False
+                if self.grid[box_r][box_c - 1] != 0:
+                    return False
+                # Check path is clear
+                for c in range(box_c + 1, goal_c + 1):
+                    if self.grid[box_r][c] == 1:
+                        return False
+                return True
+            else:
+                # Push left - need empty space to right of box
+                if box_c + 1 >= self.size - 1:
+                    return False
+                if self.grid[box_r][box_c + 1] != 0:
+                    return False
+                # Check path is clear
+                for c in range(goal_c, box_c):
+                    if self.grid[box_r][c] == 1:
+                        return False
+                return True
+        elif box_c == goal_c:
+            # Same column - check vertical push
+            if box_r < goal_r:
+                # Push down - need empty space above box
+                if box_r - 1 < 1:
+                    return False
+                if self.grid[box_r - 1][box_c] != 0:
+                    return False
+                # Check path is clear
+                for r in range(box_r + 1, goal_r + 1):
+                    if self.grid[r][box_c] == 1:
+                        return False
+                return True
+            else:
+                # Push up - need empty space below box
+                if box_r + 1 >= self.size - 1:
+                    return False
+                if self.grid[box_r + 1][box_c] != 0:
+                    return False
+                # Check path is clear
+                for r in range(goal_r, box_r):
+                    if self.grid[r][box_c] == 1:
+                        return False
+                return True
+        return False
+
     async def generate_puzzle(self) -> None:
-        """Generate a new Sokoban puzzle."""
-        # Create a simple room with walls
+        """Generate a new Sokoban puzzle that is guaranteed solvable.
+
+        Strategy: Place goals first, then place boxes in positions where
+        they can be directly pushed to goals in a straight line.
+        """
+        max_attempts = 50
+
+        for _attempt in range(max_attempts):
+            # Create a simple room with walls (only borders, no internal walls for simplicity)
+            self.grid = [[0 for _ in range(self.size)] for _ in range(self.size)]
+
+            # Add border walls
+            for i in range(self.size):
+                self.grid[0][i] = 1
+                self.grid[self.size - 1][i] = 1
+                self.grid[i][0] = 1
+                self.grid[i][self.size - 1] = 1
+
+            # Place goals in safe positions (not in corners, not on edges next to corners)
+            self.goals = []
+            goal_attempts = 0
+            while len(self.goals) < self.num_boxes and goal_attempts < 100:
+                goal_attempts += 1
+                # Place goals in the interior, avoiding positions too close to walls
+                r = self._rng.randint(2, self.size - 3)
+                c = self._rng.randint(2, self.size - 3)
+                if self.grid[r][c] == 0 and (r, c) not in self.goals:
+                    self.goals.append((r, c))
+                    self.grid[r][c] = 3  # Mark as goal
+
+            if len(self.goals) < self.num_boxes:
+                continue
+
+            # For each goal, place a box that can be directly pushed to it
+            boxes_placed = []
+            all_boxes_valid = True
+
+            for goal_r, goal_c in self.goals:
+                # Try to place box in a position where it can be pushed to goal
+                placed = False
+
+                # Try each direction: place box such that pushing will move it to goal
+                # Shuffle directions for variety
+                directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
+                self._rng.shuffle(directions)
+
+                for dr, dc in directions:
+                    # Box position (offset from goal)
+                    distance = self._rng.randint(1, 2)  # 1-2 cells away
+                    box_r = goal_r - dr * distance
+                    box_c = goal_c - dc * distance
+
+                    # Push position (where player needs to be to push)
+                    push_r = box_r - dr
+                    push_c = box_c - dc
+
+                    # Check all positions are valid
+                    if not (1 <= box_r < self.size - 1 and 1 <= box_c < self.size - 1):
+                        continue
+                    if not (1 <= push_r < self.size - 1 and 1 <= push_c < self.size - 1):
+                        continue
+
+                    # Check box position is empty and not a corner
+                    if self.grid[box_r][box_c] != 0:
+                        continue
+                    if (box_r, box_c) in boxes_placed:
+                        continue
+
+                    # Check push position is empty
+                    if self.grid[push_r][push_c] != 0:
+                        continue
+                    if (push_r, push_c) in boxes_placed:
+                        continue
+
+                    # Check path from box to goal is clear (only goals allowed)
+                    path_clear = True
+                    if dr != 0:
+                        step = 1 if dr > 0 else -1
+                        for r in range(box_r + step, goal_r + step, step):
+                            if self.grid[r][box_c] not in [0, 3]:
+                                path_clear = False
+                                break
+                            if (r, box_c) in boxes_placed:
+                                path_clear = False
+                                break
+                    else:
+                        step = 1 if dc > 0 else -1
+                        for c in range(box_c + step, goal_c + step, step):
+                            if self.grid[box_r][c] not in [0, 3]:
+                                path_clear = False
+                                break
+                            if (box_r, c) in boxes_placed:
+                                path_clear = False
+                                break
+
+                    if path_clear:
+                        boxes_placed.append((box_r, box_c))
+                        placed = True
+                        break
+
+                if not placed:
+                    all_boxes_valid = False
+                    break
+
+            if not all_boxes_valid:
+                # Reset and try again
+                continue
+
+            # Place all boxes
+            for box_r, box_c in boxes_placed:
+                self.grid[box_r][box_c] = 2
+
+            # Find a suitable player position
+            # Player should be able to reach push positions
+            player_placed = False
+            player_candidates = []
+
+            for r in range(1, self.size - 1):
+                for c in range(1, self.size - 1):
+                    if self.grid[r][c] == 0:
+                        player_candidates.append((r, c))
+
+            if player_candidates:
+                self._rng.shuffle(player_candidates)
+                self.player_pos = player_candidates[0]
+                self.grid[self.player_pos[0]][self.player_pos[1]] = 4
+                player_placed = True
+
+            if player_placed:
+                # Store initial state
+                self.initial_state = {
+                    "grid": [row[:] for row in self.grid],
+                    "player_pos": self.player_pos,
+                }
+                self.moves_made = 0
+                self.game_started = True
+                return
+
+        # Fallback: create a trivially simple puzzle
         self.grid = [[0 for _ in range(self.size)] for _ in range(self.size)]
 
         # Add border walls
@@ -74,58 +286,27 @@ class SokobanGame(PuzzleGame):
             self.grid[i][0] = 1
             self.grid[i][self.size - 1] = 1
 
-        # Add some internal walls
-        for _ in range(self.size // 2):
-            r = self._rng.randint(2, self.size - 3)
-            c = self._rng.randint(2, self.size - 3)
-            self.grid[r][c] = 1
-
-        # Place goals
+        # Place goals and boxes in a simple line pattern
         self.goals = []
-        for _ in range(self.num_boxes):
-            while True:
-                r = self._rng.randint(1, self.size - 2)
-                c = self._rng.randint(1, self.size - 2)
-                if self.grid[r][c] == 0 and (r, c) not in self.goals:
-                    self.goals.append((r, c))
-                    self.grid[r][c] = 3
-                    break
+        mid = self.size // 2
 
-        # Place boxes near goals
-        for goal_r, goal_c in self.goals:
-            placed = False
-            for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
-                r, c = goal_r + dr, goal_c + dc
-                if 0 <= r < self.size and 0 <= c < self.size:
-                    if self.grid[r][c] == 0:
-                        self.grid[r][c] = 2
-                        placed = True
-                        break
-            if not placed:
-                # Place box on empty space
-                for r in range(1, self.size - 1):
-                    for c in range(1, self.size - 1):
-                        if self.grid[r][c] == 0:
-                            self.grid[r][c] = 2
-                            placed = True
-                            break
-                    if placed:
-                        break
+        for i in range(self.num_boxes):
+            goal_r = mid
+            goal_c = 2 + i * 2
+            if goal_c < self.size - 2:
+                self.goals.append((goal_r, goal_c))
+                self.grid[goal_r][goal_c] = 3
+                # Box one cell above
+                self.grid[goal_r - 1][goal_c] = 2
 
-        # Place player
-        for r in range(1, self.size - 1):
-            for c in range(1, self.size - 1):
-                if self.grid[r][c] == 0:
-                    self.player_pos = (r, c)
-                    self.grid[r][c] = 4
-                    break
+        # Player at bottom
+        self.player_pos = (mid + 1, 2)
+        self.grid[self.player_pos[0]][self.player_pos[1]] = 4
 
-        # Store initial state
         self.initial_state = {
             "grid": [row[:] for row in self.grid],
             "player_pos": self.player_pos,
         }
-
         self.moves_made = 0
         self.game_started = True
 
@@ -231,49 +412,146 @@ class SokobanGame(PuzzleGame):
                     return False
         return True
 
+    def _find_path_to_push_position(self, target_r: int, target_c: int) -> list[str] | None:
+        """Use BFS to find path from player to target position.
+
+        Returns list of directions or None if no path exists.
+        """
+        from collections import deque
+
+        start = self.player_pos
+        if start == (target_r, target_c):
+            return []
+
+        direction_map = {"up": (-1, 0), "down": (1, 0), "left": (0, -1), "right": (0, 1)}
+        visited = {start}
+        queue: deque[tuple[tuple[int, int], list[str]]] = deque([(start, [])])
+
+        while queue:
+            (r, c), path = queue.popleft()
+
+            for direction, (dr, dc) in direction_map.items():
+                nr, nc = r + dr, c + dc
+
+                if (nr, nc) in visited:
+                    continue
+                if not (0 <= nr < self.size and 0 <= nc < self.size):
+                    continue
+
+                cell = self.grid[nr][nc]
+                # Can only move through empty cells and goals
+                if cell not in [0, 3]:
+                    continue
+
+                if (nr, nc) == (target_r, target_c):
+                    return path + [direction]
+
+                visited.add((nr, nc))
+                queue.append(((nr, nc), path + [direction]))
+
+        return None
+
     async def get_hint(self) -> tuple[Any, str] | None:
         """Get a hint for the next move.
+
+        Uses BFS to find the optimal move to push boxes toward goals.
 
         Returns:
             Tuple of (hint_data, hint_message) or None
         """
-        # Simple hint: suggest moving toward nearest box not on goal
-        curr_r, curr_c = self.player_pos
+        if self.is_complete():
+            return None
 
-        # Find boxes not on goals
+        direction_map = {"up": (-1, 0), "down": (1, 0), "left": (0, -1), "right": (0, 1)}
+
+        # Find boxes not on goals and unfilled goals
         boxes_not_on_goal = []
+        unfilled_goals = []
+
         for r in range(self.size):
             for c in range(self.size):
-                if self.grid[r][c] == 2:  # Box not on goal
+                if self.grid[r][c] == 2:
                     boxes_not_on_goal.append((r, c))
+
+        for gr, gc in self.goals:
+            if self.grid[gr][gc] != 5:  # Not box-on-goal
+                unfilled_goals.append((gr, gc))
 
         if not boxes_not_on_goal:
             return None
 
-        # Find closest box
-        min_dist = float("inf")
-        closest_box = None
-        for br, bc in boxes_not_on_goal:
-            dist = abs(br - curr_r) + abs(bc - curr_c)
-            if dist < min_dist:
-                min_dist = dist
-                closest_box = (br, bc)
+        # For each box, find the best push direction toward a goal
+        best_hint = None
+        best_score = float("inf")
 
-        if closest_box:
-            br, bc = closest_box
-            # Suggest direction toward box
-            if br < curr_r:
-                direction = "up"
-            elif br > curr_r:
-                direction = "down"
-            elif bc < curr_c:
-                direction = "left"
-            else:
-                direction = "right"
+        for box_r, box_c in boxes_not_on_goal:
+            for goal_r, goal_c in unfilled_goals:
+                # Determine push direction needed
+                push_dir = None
+                if box_r == goal_r:
+                    if box_c < goal_c:
+                        push_dir = "right"
+                    elif box_c > goal_c:
+                        push_dir = "left"
+                elif box_c == goal_c:
+                    if box_r < goal_r:
+                        push_dir = "down"
+                    elif box_r > goal_r:
+                        push_dir = "up"
 
-            hint_data = direction
-            hint_message = f"Try moving {direction} toward a box"
-            return hint_data, hint_message
+                if push_dir is None:
+                    continue
+
+                dr, dc = direction_map[push_dir]
+                # Player needs to be on opposite side of box to push
+                push_pos_r = box_r - dr
+                push_pos_c = box_c - dc
+
+                # Check if push position is valid
+                if not (1 <= push_pos_r < self.size - 1 and 1 <= push_pos_c < self.size - 1):
+                    continue
+                if self.grid[push_pos_r][push_pos_c] == 1:  # Wall
+                    continue
+
+                # Check if we can actually push (destination is clear)
+                dest_r, dest_c = box_r + dr, box_c + dc
+                if not (0 <= dest_r < self.size and 0 <= dest_c < self.size):
+                    continue
+                if self.grid[dest_r][dest_c] not in [0, 3]:  # Not empty/goal
+                    continue
+
+                # If player is already at push position, push is the hint
+                if self.player_pos == (push_pos_r, push_pos_c):
+                    score = abs(goal_r - dest_r) + abs(goal_c - dest_c)
+                    if score < best_score:
+                        best_score = score
+                        best_hint = (push_dir, f"Push {push_dir} to move box toward goal")
+
+                # Otherwise, find path to push position
+                elif self.grid[push_pos_r][push_pos_c] in [0, 3]:
+                    path = self._find_path_to_push_position(push_pos_r, push_pos_c)
+                    if path:
+                        score = len(path) + abs(goal_r - dest_r) + abs(goal_c - dest_c)
+                        if score < best_score:
+                            best_score = score
+                            best_hint = (path[0], f"Move {path[0]} to get into push position")
+
+        if best_hint:
+            return best_hint
+
+        # Fallback: try any valid move
+        curr_r, curr_c = self.player_pos
+        for direction, (dr, dc) in direction_map.items():
+            new_r, new_c = curr_r + dr, curr_c + dc
+            if 0 <= new_r < self.size and 0 <= new_c < self.size:
+                cell = self.grid[new_r][new_c]
+                if cell in [0, 3]:  # Empty or goal
+                    return direction, f"Try moving {direction}"
+                elif cell in [2, 5]:  # Box
+                    push_r, push_c = new_r + dr, new_c + dc
+                    if 0 <= push_r < self.size and 0 <= push_c < self.size:
+                        if self.grid[push_r][push_c] in [0, 3]:
+                            return direction, f"Try pushing {direction}"
 
         return None
 

@@ -109,3 +109,38 @@ class TestPuzzleGame:
         game = ConcretePuzzleGame()
         assert game.name == "Test Puzzle"
         assert game.description == "A test puzzle for testing"
+
+    async def test_constraint_types(self):
+        """Test default constraint_types property."""
+        game = ConcretePuzzleGame()
+        assert game.constraint_types == []
+
+    async def test_business_analogies(self):
+        """Test default business_analogies property."""
+        game = ConcretePuzzleGame()
+        assert game.business_analogies == []
+
+    async def test_complexity_profile(self):
+        """Test default complexity_profile property."""
+        game = ConcretePuzzleGame()
+        profile = game.complexity_profile
+        assert profile["reasoning_type"] == "deductive"
+        assert profile["search_space"] == "medium"
+        assert profile["constraint_density"] == "moderate"
+
+    async def test_complexity_metrics(self):
+        """Test default complexity_metrics property."""
+        game = ConcretePuzzleGame()
+        metrics = game.complexity_metrics
+        assert metrics["variable_count"] == 0
+        assert metrics["constraint_count"] == 0
+        assert metrics["domain_size"] == 0
+        assert metrics["branching_factor"] == 0.0
+        assert metrics["empty_cells"] == 0
+
+    async def test_difficulty_enum(self):
+        """Test initialization with DifficultyLevel enum."""
+        from puzzle_arcade_server.models import DifficultyLevel
+
+        game = ConcretePuzzleGame(DifficultyLevel.HARD)
+        assert game.difficulty == DifficultyLevel.HARD

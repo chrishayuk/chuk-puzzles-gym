@@ -1,4 +1,4 @@
-.PHONY: help install dev-install run run-docker build test test-cov check lint format security clean clean-build clean-all docker-build docker-run docker-stop docker-clean build publish publish-manual publish-test fly-deploy fly-logs fly-status example-telnet example-telnet-interactive example-telnet-sudoku example-telnet-kenken example-ws example-ws-interactive example-ws-sudoku example-ws-binary example-ws-tour example-ws-solve
+.PHONY: help install dev-install run run-docker build test test-cov check lint format security clean clean-build clean-all docker-build docker-run docker-stop docker-clean build publish publish-manual publish-test fly-deploy fly-logs fly-status example-telnet example-telnet-interactive example-telnet-sudoku example-telnet-kenken example-ws example-ws-interactive example-ws-sudoku example-ws-binary example-ws-tour example-ws-solve eval eval-sudoku eval-all eval-json list-games
 
 # Variables
 PYTHON := python3
@@ -74,6 +74,11 @@ help:
 	@echo "  make example-ws-binary           - Run WebSocket client (Binary demo)"
 	@echo "  make example-ws-tour             - Run WebSocket client (game tour)"
 	@echo "  make example-ws-solve            - Run WebSocket client (solve mode)"
+	@echo ""
+	@echo "Evaluation:"
+	@echo "  make eval             - Run evaluation harness (all games, 5 episodes)"
+	@echo "  make eval-sudoku      - Evaluate Sudoku (10 episodes)"
+	@echo "  make eval-all         - Evaluate all games (10 episodes each)"
 	@echo ""
 	@echo "Cleanup:"
 	@echo "  make clean            - Remove generated files"
@@ -490,6 +495,47 @@ example-ws-tour:
 example-ws-solve:
 	@echo "Running WebSocket example client (solve mode)..."
 	$(PYTHON) $(EXAMPLES_DIR)/websocket_client.py solve
+
+# Evaluation
+eval:
+	@echo "Running evaluation harness (quick check)..."
+	@if command -v uv >/dev/null 2>&1; then \
+		PYTHONPATH=$(SRC_DIR) uv run python -m puzzle_arcade_server.eval --all -d easy -n 3 -v; \
+	else \
+		PYTHONPATH=$(SRC_DIR) $(PYTHON) -m puzzle_arcade_server.eval --all -d easy -n 3 -v; \
+	fi
+
+eval-sudoku:
+	@echo "Evaluating Sudoku (10 episodes)..."
+	@if command -v uv >/dev/null 2>&1; then \
+		PYTHONPATH=$(SRC_DIR) uv run python -m puzzle_arcade_server.eval sudoku -d medium -n 10 -v; \
+	else \
+		PYTHONPATH=$(SRC_DIR) $(PYTHON) -m puzzle_arcade_server.eval sudoku -d medium -n 10 -v; \
+	fi
+
+eval-all:
+	@echo "Evaluating all games (10 episodes each)..."
+	@if command -v uv >/dev/null 2>&1; then \
+		PYTHONPATH=$(SRC_DIR) uv run python -m puzzle_arcade_server.eval --all -d easy -n 10 -v; \
+	else \
+		PYTHONPATH=$(SRC_DIR) $(PYTHON) -m puzzle_arcade_server.eval --all -d easy -n 10 -v; \
+	fi
+
+eval-json:
+	@echo "Evaluating all games (JSON output)..."
+	@if command -v uv >/dev/null 2>&1; then \
+		PYTHONPATH=$(SRC_DIR) uv run python -m puzzle_arcade_server.eval --all -d easy -n 5 -o json; \
+	else \
+		PYTHONPATH=$(SRC_DIR) $(PYTHON) -m puzzle_arcade_server.eval --all -d easy -n 5 -o json; \
+	fi
+
+list-games:
+	@echo "Available games:"
+	@if command -v uv >/dev/null 2>&1; then \
+		PYTHONPATH=$(SRC_DIR) uv run python -m puzzle_arcade_server.eval --list-games; \
+	else \
+		PYTHONPATH=$(SRC_DIR) $(PYTHON) -m puzzle_arcade_server.eval --list-games; \
+	fi
 
 # Development helpers
 serve-coverage:

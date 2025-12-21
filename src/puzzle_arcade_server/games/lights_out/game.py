@@ -126,6 +126,11 @@ class LightsOutGame(PuzzleGame):
 
         # Toggle the cell and neighbors
         self._toggle_cell(row, col, self.grid)
+
+        # Update solution tracking - XOR the press state
+        # (pressing a cell twice cancels out)
+        self.presses[row][col] = 1 - self.presses[row][col]
+
         self.moves_made += 1
 
         return MoveResult(success=True, message=f"Toggled light at ({row + 1}, {col + 1})", state_changed=True)

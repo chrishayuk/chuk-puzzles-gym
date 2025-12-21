@@ -82,8 +82,9 @@ make example-ws-interactive  # Interactive mode
 
 ## Available Games
 
-The Puzzle Arcade Server offers 7 different puzzle types:
+The Puzzle Arcade Server offers **24 different puzzle types** across 5 categories:
 
+### Classic Logic Puzzles
 1. **Sudoku** - Classic 9x9 number placement puzzle
 2. **KenKen** - Arithmetic cage-based puzzle
 3. **Kakuro** - Crossword-style mathematical puzzle
@@ -91,6 +92,31 @@ The Puzzle Arcade Server offers 7 different puzzle types:
 5. **Futoshiki** - Inequality-based number placement
 6. **Nonogram** - Picture logic puzzle using line clues
 7. **Logic Grid** - Deductive reasoning puzzle
+
+### Advanced CP-SAT Puzzles
+8. **Killer Sudoku** - Sudoku with sum cages
+9. **Lights Out** - Boolean XOR toggle puzzle
+10. **Mastermind** - Code-breaking deduction game
+11. **Slitherlink** - Loop drawing puzzle
+12. **Bridges** - Island connection puzzle
+13. **Hitori** - Cell shading elimination puzzle
+14. **Shikaku** - Rectangle partitioning puzzle
+
+### Specialized Constraint Puzzles
+15. **Hidato** - Sequential number path puzzle
+16. **Tents and Trees** - Bipartite matching puzzle
+17. **Fillomino** - Region growth puzzle
+18. **Star Battle** - Star placement puzzle
+19. **Sokoban** - Box pushing puzzle
+
+### Optimization Challenges
+20. **Knapsack** - Value maximization puzzle
+21. **Task Scheduler** - Makespan minimization puzzle
+
+### Advanced Reasoning Puzzles
+22. **Nurikabe** - Island and sea puzzle
+23. **Einstein's Puzzle** - Multi-attribute deduction
+24. **Minesweeper** - Probabilistic reasoning puzzle
 
 ## Server Connection Details
 
@@ -106,22 +132,24 @@ The Puzzle Arcade Server offers 7 different puzzle types:
 
 Once connected to the server, you can use these commands:
 
-### General Commands
+### Menu Commands
 - `help` - Show available commands
-- `list` - List all available puzzle games
-- `select <game>` - Select a puzzle game (e.g., `select sudoku`)
-- `rules` - Show rules for the current game
-- `commands` - Show game-specific commands
+- `<number>` or `<name>` - Select game (e.g., `1` or `sudoku`)
+- `<name> <difficulty>` - Start game directly (e.g., `sudoku hard`)
+- `<name> <difficulty> <seed>` - Start with specific seed (e.g., `sudoku hard 12345`)
 - `quit` - Disconnect from server
 
-### Game Commands
-- `start <difficulty>` - Start a new game (easy/medium/hard)
+### In-Game Commands
 - `show` - Display the current puzzle grid
 - `hint` - Get a hint for the next move
 - `check` - Check if the puzzle is complete
-- `stats` - Show game statistics
+- `stats` - Show game statistics (includes seed for sharing)
+- `rules` - Show rules for the current game
+- `commands` - Show game-specific commands
+- `menu` - Return to game selection
 - `place <row> <col> <value>` - Place a number (game-specific)
 - `clear <row> <col>` - Clear a cell (game-specific)
+- `mode <normal|agent>` - Switch output mode
 
 ## Example Session
 
@@ -226,6 +254,31 @@ async def play_puzzle():
 
 asyncio.run(play_puzzle())
 ```
+
+## Evaluation Harness
+
+For automated benchmarking and agent evaluation, use the built-in evaluation CLI:
+
+```bash
+# List all available games
+puzzle-arcade-eval --list-games
+
+# Evaluate a specific game
+puzzle-arcade-eval sudoku -d medium -n 10 -v
+
+# Evaluate all games
+puzzle-arcade-eval --all -d easy -n 5
+
+# Output as JSON
+puzzle-arcade-eval sudoku -o json > results.json
+
+# Using Make targets
+make eval           # Quick evaluation
+make eval-sudoku    # Evaluate Sudoku
+make eval-all       # Evaluate all games
+```
+
+See the main README for more details on the evaluation harness.
 
 ## Integration with LLMs and MCP
 

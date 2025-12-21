@@ -157,11 +157,18 @@ class TentsGame(PuzzleGame):
             if self.trees[tree_r][tree_c] or tent_solution[tree_r][tree_c]:
                 continue
 
+            # Skip if this position is adjacent to an existing tree or tent
+            # (would create ambiguous tree-tent associations)
+            tree_adjacent = self._get_adjacent(tree_r, tree_c)
+            if any(self.trees[ar][ac] for ar, ac in tree_adjacent):
+                continue
+            if any(tent_solution[ar][ac] for ar, ac in tree_adjacent):
+                continue
+
             # Find valid tent positions (adjacent, not touching other tents)
-            adjacent = self._get_adjacent(tree_r, tree_c)
             valid_tent_positions = []
 
-            for tent_r, tent_c in adjacent:
+            for tent_r, tent_c in tree_adjacent:
                 # Check if position is empty
                 if self.trees[tent_r][tent_c] or tent_solution[tent_r][tent_c]:
                     continue
@@ -169,6 +176,13 @@ class TentsGame(PuzzleGame):
                 # Check if tent would touch another tent (including diagonally)
                 all_adj = self._get_all_adjacent(tent_r, tent_c)
                 if any(tent_solution[ar][ac] for ar, ac in all_adj):
+                    continue
+
+                # Check if this tent position would be adjacent to another tree
+                # (would create ambiguous tent-tree associations)
+                tent_adj = self._get_adjacent(tent_r, tent_c)
+                other_trees = sum(1 for ar, ac in tent_adj if self.trees[ar][ac])
+                if other_trees > 0:
                     continue
 
                 valid_tent_positions.append((tent_r, tent_c))

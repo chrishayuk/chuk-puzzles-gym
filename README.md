@@ -43,6 +43,11 @@ Once connected, type `help` to see available games, or `sudoku easy` to start pl
   - Enable with `mode agent` command
   - Machine-parseable grid format with clear start/end markers
   - Compact output optimized for LLM tool integration
+- **Evaluation Harness** (`puzzle-arcade-eval`) - Built-in benchmarking CLI
+  - Batch evaluation with configurable episodes
+  - Multiple output formats (JSON, CSV, Markdown)
+  - Metrics: moves, invalid moves, hints, solve time
+  - Reproducible with deterministic seeds
 - **Multiple transport protocols:**
   - **Telnet** (port 8023) - Classic telnet protocol
   - **TCP** (port 8024) - Raw TCP connections
@@ -353,6 +358,65 @@ MOVES: 3
 - `mode normal` - Human-friendly output (default)
 - `mode agent` - Machine-parseable structured output
 - `mode compact` - Reserved for future use
+
+## Evaluation Harness
+
+The project includes a built-in **evaluation harness** for benchmarking puzzle-solving agents:
+
+### Quick Start
+
+```bash
+# List all available games
+puzzle-arcade-eval --list-games
+
+# Evaluate a specific game (10 episodes, medium difficulty)
+puzzle-arcade-eval sudoku -d medium -n 10 -v
+
+# Evaluate all games (5 episodes each)
+puzzle-arcade-eval --all -d easy -n 5
+
+# Output as JSON for analysis
+puzzle-arcade-eval sudoku -n 20 -o json > results.json
+```
+
+### Using Make Targets
+
+```bash
+make eval           # Quick evaluation (3 episodes per game)
+make eval-sudoku    # Evaluate Sudoku (10 episodes)
+make eval-all       # Evaluate all games (10 episodes each)
+make eval-json      # Output as JSON
+make list-games     # List available games
+```
+
+### Sample Output
+
+```
+Sudoku Medium Evaluation (10 episodes)
+==================================================
+Solved:     10/10 (100.0%)
+Avg Moves:  45.3
+Avg Invalid: 0.0
+Avg Time:   12ms
+```
+
+### Output Formats
+
+- **text** (default) - Human-readable summary
+- **json** - Structured JSON for programmatic analysis
+- **csv** - Spreadsheet-compatible format
+- **markdown** - Documentation-ready tables
+
+### Metrics Collected
+
+| Metric | Description |
+|--------|-------------|
+| `solved` | Whether the puzzle was solved |
+| `moves_made` | Number of valid moves |
+| `invalid_moves` | Number of rejected moves |
+| `hints_used` | Number of hints requested |
+| `wall_time_ms` | Time to solve in milliseconds |
+| `seed` | Puzzle seed for reproducibility |
 
 ## Universal Game Commands
 
@@ -984,6 +1048,37 @@ Contributions are welcome! Please follow these guidelines:
 - All grid headers must align with row pipes
 - Use the format `"  |"` for headers to match row format `"N |"`
 - Test visually: `make example-telnet-kenken`
+
+## Roadmap
+
+See [ROADMAP.md](ROADMAP.md) for the full development roadmap.
+
+### Highlights
+
+**Benchmarking & Metrics**
+- Puzzle complexity metrics (constraint count, variable count, branching factor)
+- Episode model for tracking game sessions
+- Trace logging for offline analysis
+
+**Agent Evaluation Tools**
+- Batch evaluation harness CLI
+- Solver vs Model comparison mode
+- JSON protocol for structured agent communication
+
+**Learning & Curriculum**
+- Constraint concept progression graph
+- Tagged puzzle sets for educators
+- Difficulty scaling based on constraint complexity
+
+**Ecosystem Integrations**
+- MCP native mode for agent frameworks
+- Python client library
+- REST/WebSocket API documentation
+
+**UX & Community**
+- Interactive web viewer with replay mode
+- Public benchmark packs (versioned, citable)
+- Community leaderboards
 
 ## License
 

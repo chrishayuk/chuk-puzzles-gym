@@ -179,18 +179,19 @@ class TestMastermindGame:
         assert game.is_complete() is False
 
     async def test_get_hint_first_position(self):
-        """Test hint for first guess."""
+        """Test hint for first guess - returns full secret code."""
         game = MastermindGame("easy")
         game.secret_code = [1, 2, 3, 4]
         game.guesses = []
         game.feedback = []
 
         hint_data, hint_message = await game.get_hint()
-        assert hint_data == (1,)
-        assert "1" in hint_message
+        # Hint now returns full secret code for evaluation purposes
+        assert hint_data == (1, 2, 3, 4)
+        assert "1 2 3 4" in hint_message
 
     async def test_get_hint_after_guess(self):
-        """Test hint after making a guess."""
+        """Test hint after making a guess - returns full secret code."""
         game = MastermindGame("easy")
         game.secret_code = [1, 2, 3, 4]
         game.guesses = [[5, 5, 5, 5]]
@@ -198,8 +199,9 @@ class TestMastermindGame:
 
         hint_data, hint_message = await game.get_hint()
         assert hint_data is not None
-        assert len(hint_data) == 2  # (position, color)
-        assert "Position" in hint_message
+        # Hint returns full secret code
+        assert len(hint_data) == 4
+        assert "secret code" in hint_message.lower()
 
     async def test_get_hint_solved(self):
         """Test hint when game is solved."""

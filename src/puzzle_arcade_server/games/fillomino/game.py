@@ -116,68 +116,179 @@ class FillominoGame(PuzzleGame):
 
         return region
 
-    async def generate_puzzle(self) -> None:
-        """Generate a new Fillomino puzzle."""
-        # Create a valid solution using random region placement
+    def _create_fallback_solution(self) -> None:
+        """Create a simple valid Fillomino solution.
+
+        Uses a greedy approach: for each empty cell, try to create the largest
+        valid region possible (up to size 4), then fill remaining with 1s.
+        """
         self.solution = [[0 for _ in range(self.size)] for _ in range(self.size)]
 
-        # Fill the grid with regions
-        for _ in range(100):  # Try to fill completely
-            # Find an empty cell
-            empty_cells = [(r, c) for r in range(self.size) for c in range(self.size) if self.solution[r][c] == 0]
-            if not empty_cells:
-                break
-
-            # Pick a random empty cell
-            r, c = self._rng.choice(empty_cells)
-
-            # Choose a random region size (1-5)
-            size = self._rng.randint(1, min(5, len(empty_cells)))
-
-            # Try to create a region of this size
-            region = [(r, c)]
-            self.solution[r][c] = size
-
-            # Grow the region
-            while len(region) < size:
-                # Find cells adjacent to the current region
-                candidates = []
-                for rr, cc in region:
-                    for nr, nc in self._get_adjacent(rr, cc):
-                        if self.solution[nr][nc] == 0 and (nr, nc) not in region:
-                            candidates.append((nr, nc))
-
-                if not candidates:
-                    # Can't grow further, adjust size
-                    size = len(region)
-                    for rr, cc in region:
-                        self.solution[rr][cc] = size
-                    break
-
-                # Add a random candidate to the region
-                nr, nc = self._rng.choice(candidates)
-                region.append((nr, nc))
-                self.solution[nr][nc] = size
-
-        # Fill any remaining cells with size 1
+        # Process cells in order, trying to create valid regions
         for r in range(self.size):
             for c in range(self.size):
-                if self.solution[r][c] == 0:
-                    self.solution[r][c] = 1
+                if self.solution[r][c] != 0:
+                    continue
+
+                # Try to create a region of size 2, 3, or 4
+                placed = False
+                for target_size in [3, 2, 4]:
+                    region = self._try_grow_region(r, c, target_size)
+                    if region and len(region) == target_size:
+                        for rr, cc in region:
+                            self.solution[rr][cc] = target_size
+                        placed = True
+                        break
+
+                if not placed:
+                    # Can't form a larger region, use size 1
+                    # But check it won't merge with adjacent 1s
+                    can_use_one = True
+                    for nr, nc in self._get_adjacent(r, c):
+                        if self.solution[nr][nc] == 1:
+                            can_use_one = False
+                            break
+
+                    if can_use_one:
+                        self.solution[r][c] = 1
+                    else:
+                        # Try size 2 with any adjacent empty cell
+                        for nr, nc in self._get_adjacent(r, c):
+                            if self.solution[nr][nc] == 0:
+                                self.solution[r][c] = 2
+                                self.solution[nr][nc] = 2
+                                placed = True
+                                break
+                        if not placed:
+                            # Last resort
+                            self.solution[r][c] = 1
+
+    def _try_grow_region(self, start_r: int, start_c: int, target_size: int) -> list[tuple[int, int]] | None:
+        """Try to grow a region of exactly target_size from start position."""
+        region = [(start_r, start_c)]
+
+        while len(region) < target_size:
+            candidates = []
+            for r, c in region:
+                for nr, nc in self._get_adjacent(r, c):
+                    if self.solution[nr][nc] == 0 and (nr, nc) not in region:
+                        # Check this wouldn't create adjacency with same-size region
+                        test_region = region + [(nr, nc)]
+                        valid = True
+                        for tr, tc in test_region:
+                            for ar, ac in self._get_adjacent(tr, tc):
+                                if (ar, ac) not in test_region and self.solution[ar][ac] == target_size:
+                                    valid = False
+                                    break
+                            if not valid:
+                                break
+                        if valid:
+                            candidates.append((nr, nc))
+
+            if not candidates:
+                return None
+
+            # Pick the first candidate
+            region.append(candidates[0])
+
+        return region
+
+    def _is_valid_region_placement(self, grid: list[list[int]], region: list[tuple[int, int]], size: int) -> bool:
+        """Check if placing a region with given size would be valid.
+
+        A region is valid if no adjacent cell outside the region has the same number.
+        """
+        for r, c in region:
+            for nr, nc in self._get_adjacent(r, c):
+                if (nr, nc) not in region and grid[nr][nc] == size:
+                    return False
+        return True
+
+    async def generate_puzzle(self) -> None:
+        """Generate a new Fillomino puzzle with valid solution."""
+        max_attempts = 50
+
+        for _attempt in range(max_attempts):
+            self.solution = [[0 for _ in range(self.size)] for _ in range(self.size)]
+
+            # Fill the grid with regions
+            success = True
+            for _ in range(self.size * self.size):
+                # Find empty cells
+                empty_cells = [(r, c) for r in range(self.size) for c in range(self.size) if self.solution[r][c] == 0]
+                if not empty_cells:
+                    break
+
+                # Pick a random empty cell
+                r, c = self._rng.choice(empty_cells)
+
+                # Try different region sizes, starting from larger
+                placed = False
+                for target_size in self._rng.sample(range(1, 6), min(5, len(empty_cells))):
+                    region = [(r, c)]
+
+                    # Grow the region
+                    temp_solution = [row[:] for row in self.solution]
+                    temp_solution[r][c] = target_size
+
+                    while len(region) < target_size:
+                        # Find valid candidates
+                        candidates = []
+                        for rr, cc in region:
+                            for nr, nc in self._get_adjacent(rr, cc):
+                                if temp_solution[nr][nc] == 0 and (nr, nc) not in region:
+                                    # Check if adding this cell would create adjacent same-size regions
+                                    test_region = region + [(nr, nc)]
+                                    if self._is_valid_region_placement(temp_solution, test_region, target_size):
+                                        candidates.append((nr, nc))
+
+                        if not candidates:
+                            break
+
+                        nr, nc = self._rng.choice(candidates)
+                        region.append((nr, nc))
+                        temp_solution[nr][nc] = target_size
+
+                    # Check if we achieved the target size and the region is valid
+                    if len(region) == target_size and self._is_valid_region_placement(
+                        temp_solution, region, target_size
+                    ):
+                        # Apply the region
+                        for rr, cc in region:
+                            self.solution[rr][cc] = target_size
+                        placed = True
+                        break
+
+                if not placed:
+                    # Try size 1 as fallback
+                    if self._is_valid_region_placement(self.solution, [(r, c)], 1):
+                        self.solution[r][c] = 1
+                    else:
+                        # Can't place anything valid here
+                        success = False
+                        break
+
+            if success:
+                # Verify the solution is complete and valid
+                if self._verify_solution():
+                    break
+
+        # If no valid solution found, create a simple valid fallback
+        if not self._verify_solution():
+            self._create_fallback_solution()
 
         # Create the puzzle by revealing some numbers
         self.grid = [[0 for _ in range(self.size)] for _ in range(self.size)]
         num_clues = self.config.num_clues
 
         # Reveal one number from each region
-        visited = set()
+        visited: set[tuple[int, int]] = set()
         clue_count = 0
         for r in range(self.size):
             for c in range(self.size):
                 if (r, c) not in visited and clue_count < num_clues:
                     region = self._find_region(self.solution, r, c, set())
                     if region:
-                        # Reveal one cell from this region
                         reveal_r, reveal_c = self._rng.choice(region)
                         self.grid[reveal_r][reveal_c] = self.solution[reveal_r][reveal_c]
                         clue_count += 1
@@ -186,6 +297,39 @@ class FillominoGame(PuzzleGame):
         self.initial_grid = [row[:] for row in self.grid]
         self.moves_made = 0
         self.game_started = True
+
+    def _verify_solution(self) -> bool:
+        """Verify the solution is complete and valid."""
+        # Check all cells are filled
+        for r in range(self.size):
+            for c in range(self.size):
+                if self.solution[r][c] == 0:
+                    return False
+
+        # Check each region
+        visited: set[tuple[int, int]] = set()
+        for r in range(self.size):
+            for c in range(self.size):
+                if (r, c) in visited:
+                    continue
+
+                region = self._find_region(self.solution, r, c, set())
+                if not region:
+                    return False
+
+                # Check region size matches the number
+                size = len(region)
+                number = self.solution[r][c]
+                if size != number:
+                    return False
+
+                # Check no adjacent region has the same size
+                if not self._is_valid_region_placement(self.solution, region, number):
+                    return False
+
+                visited.update(region)
+
+        return True
 
     async def validate_move(self, row: int, col: int, num: int) -> MoveResult:
         """Place a number on the grid.

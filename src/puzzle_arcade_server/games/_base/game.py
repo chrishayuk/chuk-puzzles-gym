@@ -166,3 +166,24 @@ class PuzzleGame(ABC):
         - constraint_density: sparse, moderate, dense
         """
         return {"reasoning_type": "deductive", "search_space": "medium", "constraint_density": "moderate"}
+
+    @property
+    def complexity_metrics(self) -> dict[str, int | float]:
+        """Quantified complexity metrics for this puzzle instance.
+
+        Returns dict with:
+        - variable_count: Number of decision variables (cells to fill)
+        - constraint_count: Number of constraints
+        - domain_size: Average domain size per variable
+        - branching_factor: Estimated branching factor
+        - empty_cells: Number of cells still to be filled
+
+        Override in subclasses for accurate values.
+        """
+        return {
+            "variable_count": 0,
+            "constraint_count": 0,
+            "domain_size": 0,
+            "branching_factor": 0.0,
+            "empty_cells": 0,
+        }
