@@ -58,7 +58,7 @@ async def main():
         if moves <= 10 or game.is_complete():
             print(f"  Move {moves}: Place {val} at row {row}, col {col} -> {'OK' if result.success else result.message}")
         elif moves == 11:
-            print(f"  ... (continuing)")
+            print("  ... (continuing)")
 
         if not result.success:
             break
