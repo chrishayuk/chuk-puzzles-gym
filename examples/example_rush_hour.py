@@ -43,7 +43,7 @@ async def main():
     print("Vehicles:")
     for vid, v in sorted(game.vehicles.items()):
         orient = "horizontal" if v.orientation == "h" else "vertical"
-        print(f"  {vid}: row {v.row+1}, col {v.col+1}, length {v.length}, {orient}")
+        print(f"  {vid}: row {v.row + 1}, col {v.col + 1}, length {v.length}, {orient}")
 
     # Solve using hints
     print("\n--- Solving with hints ---")

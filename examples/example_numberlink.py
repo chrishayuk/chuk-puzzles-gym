@@ -40,7 +40,7 @@ async def main():
     # Show endpoints
     for pair_id, pts in sorted(game.endpoints.items()):
         (r1, c1), (r2, c2) = pts
-        print(f"  Pair {pair_id}: ({r1+1},{c1+1}) <-> ({r2+1},{c2+1})")
+        print(f"  Pair {pair_id}: ({r1 + 1},{c1 + 1}) <-> ({r2 + 1},{c2 + 1})")
 
     # Solve using hints
     print("\n--- Solving with hints ---")
@@ -56,7 +56,9 @@ async def main():
         result = await game.validate_move(row, col, val)
         moves += 1
         if moves <= 10 or game.is_complete():
-            print(f"  Move {moves}: Place {val} at row {row}, col {col} -> {'OK' if result.success else result.message}")
+            print(
+                f"  Move {moves}: Place {val} at row {row}, col {col} -> {'OK' if result.success else result.message}"
+            )
         elif moves == 11:
             print("  ... (continuing)")
 

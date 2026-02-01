@@ -74,7 +74,9 @@ async def main():
         print(f"  {word} = {val}")
     result_val = int("".join(str(game.player_mapping[ch]) for ch in game.result_word))
     print(f"  {game.result_word} = {result_val}")
-    print(f"  {' + '.join(str(v) for v in operand_vals)} = {sum(operand_vals)} {'==' if sum(operand_vals) == result_val else '!='} {result_val}")
+    print(
+        f"  {' + '.join(str(v) for v in operand_vals)} = {sum(operand_vals)} {'==' if sum(operand_vals) == result_val else '!='} {result_val}"
+    )
 
     print(f"\nCompleted: {game.is_complete()}")
     print(f"Moves:     {moves}")
