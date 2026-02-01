@@ -235,6 +235,9 @@ async def _apply_hint(game: PuzzleGame, hint_data: tuple) -> MoveResult:
         "nonogram",
         "hidato",
         "fillomino",
+        "skyscrapers",
+        "n-queens",
+        "numberlink",
     ]:
         if len(hint_data) >= 3:
             row, col, value = hint_data[0], hint_data[1], hint_data[2]
@@ -341,6 +344,24 @@ async def _apply_hint(game: PuzzleGame, hint_data: tuple) -> MoveResult:
         if hint_data:
             direction = hint_data if isinstance(hint_data, str) else hint_data
             return await game.validate_move(direction)
+
+    # Graph Coloring - hint is (node, color)
+    if game_name in ["graph coloring"]:
+        if len(hint_data) >= 2:
+            node, color = hint_data[0], hint_data[1]
+            return await game.validate_move(node, color)
+
+    # Cryptarithmetic - hint is (letter, digit)
+    if game_name in ["cryptarithmetic"]:
+        if len(hint_data) >= 2:
+            letter, digit = hint_data[0], hint_data[1]
+            return await game.validate_move(letter, digit)
+
+    # Rush Hour - hint is (vehicle_id, direction)
+    if game_name in ["rush hour"]:
+        if len(hint_data) >= 2:
+            vehicle_id, direction = hint_data[0], hint_data[1]
+            return await game.validate_move(vehicle_id, direction)
 
     # Generic fallback - try validate_move with hint args as tuple
     if isinstance(hint_data, tuple) and len(hint_data) >= 2:

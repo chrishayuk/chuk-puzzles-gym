@@ -202,7 +202,7 @@ class ArcadeHandler(TelnetHandler):
         # Set up command handler if available for this game
         handler_class = GAME_COMMAND_HANDLERS.get(game_id.lower())
         if handler_class:
-            self.game_handler = handler_class(self.current_game)
+            self.game_handler = handler_class(self.current_game)  # type: ignore[abstract]
         else:
             self.game_handler = None
 

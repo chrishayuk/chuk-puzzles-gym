@@ -10,11 +10,17 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 # Import all config classes
 from chuk_puzzles_gym.games.binary.config import BinaryConfig
 from chuk_puzzles_gym.games.bridges.config import BridgesConfig
+from chuk_puzzles_gym.games.cryptarithmetic.config import CryptarithmeticConfig
 from chuk_puzzles_gym.games.einstein.config import EinsteinConfig
 from chuk_puzzles_gym.games.fillomino.config import FillominoConfig
+from chuk_puzzles_gym.games.graph_coloring.config import GraphColoringConfig
 from chuk_puzzles_gym.games.hidato.config import HidatoConfig
 from chuk_puzzles_gym.games.hitori.config import HitoriConfig
+from chuk_puzzles_gym.games.nqueens.config import NQueensConfig
+from chuk_puzzles_gym.games.numberlink.config import NumberlinkConfig
+from chuk_puzzles_gym.games.rush_hour.config import RushHourConfig
 from chuk_puzzles_gym.games.shikaku.config import ShikakuConfig
+from chuk_puzzles_gym.games.skyscrapers.config import SkyscrapersConfig
 from chuk_puzzles_gym.games.star_battle.config import StarBattleConfig
 from chuk_puzzles_gym.models import DifficultyLevel
 
@@ -199,3 +205,132 @@ class TestStarBattleConfig:
         config = StarBattleConfig.from_difficulty(DifficultyLevel.HARD)
         assert config.difficulty == DifficultyLevel.HARD
         assert config.size == 10
+
+
+class TestSkyscrapersConfig:
+    """Tests for SkyscrapersConfig."""
+
+    def test_from_difficulty_easy(self):
+        config = SkyscrapersConfig.from_difficulty(DifficultyLevel.EASY)
+        assert config.difficulty == DifficultyLevel.EASY
+        assert config.size == 4
+
+    def test_from_difficulty_medium(self):
+        config = SkyscrapersConfig.from_difficulty(DifficultyLevel.MEDIUM)
+        assert config.difficulty == DifficultyLevel.MEDIUM
+        assert config.size == 5
+
+    def test_from_difficulty_hard(self):
+        config = SkyscrapersConfig.from_difficulty(DifficultyLevel.HARD)
+        assert config.difficulty == DifficultyLevel.HARD
+        assert config.size == 6
+
+
+class TestNQueensConfig:
+    """Tests for NQueensConfig."""
+
+    def test_from_difficulty_easy(self):
+        config = NQueensConfig.from_difficulty(DifficultyLevel.EASY)
+        assert config.difficulty == DifficultyLevel.EASY
+        assert config.size == 6
+        assert config.pre_placed == 3
+
+    def test_from_difficulty_medium(self):
+        config = NQueensConfig.from_difficulty(DifficultyLevel.MEDIUM)
+        assert config.difficulty == DifficultyLevel.MEDIUM
+        assert config.size == 8
+        assert config.pre_placed == 2
+
+    def test_from_difficulty_hard(self):
+        config = NQueensConfig.from_difficulty(DifficultyLevel.HARD)
+        assert config.difficulty == DifficultyLevel.HARD
+        assert config.size == 12
+        assert config.pre_placed == 1
+
+
+class TestNumberlinkConfig:
+    """Tests for NumberlinkConfig."""
+
+    def test_from_difficulty_easy(self):
+        config = NumberlinkConfig.from_difficulty(DifficultyLevel.EASY)
+        assert config.difficulty == DifficultyLevel.EASY
+        assert config.size == 5
+        assert config.num_pairs == 4
+
+    def test_from_difficulty_medium(self):
+        config = NumberlinkConfig.from_difficulty(DifficultyLevel.MEDIUM)
+        assert config.difficulty == DifficultyLevel.MEDIUM
+        assert config.size == 7
+        assert config.num_pairs == 6
+
+    def test_from_difficulty_hard(self):
+        config = NumberlinkConfig.from_difficulty(DifficultyLevel.HARD)
+        assert config.difficulty == DifficultyLevel.HARD
+        assert config.size == 9
+        assert config.num_pairs == 9
+
+
+class TestGraphColoringConfig:
+    """Tests for GraphColoringConfig."""
+
+    def test_from_difficulty_easy(self):
+        config = GraphColoringConfig.from_difficulty(DifficultyLevel.EASY)
+        assert config.difficulty == DifficultyLevel.EASY
+        assert config.num_nodes == 6
+        assert config.num_colors == 3
+
+    def test_from_difficulty_medium(self):
+        config = GraphColoringConfig.from_difficulty(DifficultyLevel.MEDIUM)
+        assert config.difficulty == DifficultyLevel.MEDIUM
+        assert config.num_nodes == 10
+        assert config.num_colors == 4
+
+    def test_from_difficulty_hard(self):
+        config = GraphColoringConfig.from_difficulty(DifficultyLevel.HARD)
+        assert config.difficulty == DifficultyLevel.HARD
+        assert config.num_nodes == 15
+        assert config.num_colors == 4
+
+
+class TestCryptarithmeticConfig:
+    """Tests for CryptarithmeticConfig."""
+
+    def test_from_difficulty_easy(self):
+        config = CryptarithmeticConfig.from_difficulty(DifficultyLevel.EASY)
+        assert config.difficulty == DifficultyLevel.EASY
+        assert config.max_word_length == 3
+        assert config.pre_assigned == 3
+
+    def test_from_difficulty_medium(self):
+        config = CryptarithmeticConfig.from_difficulty(DifficultyLevel.MEDIUM)
+        assert config.difficulty == DifficultyLevel.MEDIUM
+        assert config.max_word_length == 4
+        assert config.pre_assigned == 2
+
+    def test_from_difficulty_hard(self):
+        config = CryptarithmeticConfig.from_difficulty(DifficultyLevel.HARD)
+        assert config.difficulty == DifficultyLevel.HARD
+        assert config.max_word_length == 5
+        assert config.pre_assigned == 0
+
+
+class TestRushHourConfig:
+    """Tests for RushHourConfig."""
+
+    def test_from_difficulty_easy(self):
+        config = RushHourConfig.from_difficulty(DifficultyLevel.EASY)
+        assert config.difficulty == DifficultyLevel.EASY
+        assert config.size == 6
+        assert config.num_vehicles == 4
+
+    def test_from_difficulty_medium(self):
+        config = RushHourConfig.from_difficulty(DifficultyLevel.MEDIUM)
+        assert config.difficulty == DifficultyLevel.MEDIUM
+        assert config.size == 6
+        assert config.num_vehicles == 8
+
+    def test_from_difficulty_hard(self):
+        config = RushHourConfig.from_difficulty(DifficultyLevel.HARD)
+        assert config.difficulty == DifficultyLevel.HARD
+        assert config.size == 6
+        assert config.num_vehicles == 12

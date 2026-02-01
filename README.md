@@ -8,7 +8,7 @@
 [![Pydantic v2](https://img.shields.io/badge/pydantic-v2-purple.svg)](https://docs.pydantic.dev/)
 [![Type Checked](https://img.shields.io/badge/type%20checked-mypy-blue.svg)](http://mypy-lang.org/)
 
-A **multi-game puzzle gym** for **LLM training and benchmarking**, hosting 24 different logic puzzle types with synthetic data generation. Built using [chuk-gym-core](https://github.com/chrishayuk/chuk-gym-core) and [chuk-protocol-server](https://github.com/chrishayuk/chuk-protocol-server).
+A **multi-game puzzle gym** for **LLM training and benchmarking**, hosting 30 different logic puzzle types with synthetic data generation. Built using [chuk-gym-core](https://github.com/chrishayuk/chuk-gym-core) and [chuk-protocol-server](https://github.com/chrishayuk/chuk-protocol-server).
 
 **Perfect for:**
 - 🤖 **LLM Agent Testing** - Benchmark reasoning capabilities across constraint types
@@ -51,12 +51,13 @@ Once connected, type `help` to see available games, or `sudoku easy` to start pl
 
 ## Features
 
-- **24 Puzzle Games** with three difficulty levels each (easy, medium, hard)
+- **30 Puzzle Games** with three difficulty levels each (easy, medium, hard)
   - **7 Classic Logic Puzzles** - Sudoku, KenKen, Kakuro, Binary, Futoshiki, Nonogram, Logic Grid
   - **7 Advanced CP-SAT Puzzles** - Killer Sudoku, Lights Out, Mastermind, Slitherlink, Bridges, Hitori, Shikaku
   - **5 Specialized Constraint Puzzles** - Hidato, Tents and Trees, Fillomino, Star Battle, Sokoban
   - **2 Optimization Challenges** - Knapsack, Task Scheduler
   - **3 Advanced Reasoning Puzzles** - Nurikabe, Einstein's Puzzle, Minesweeper
+  - **6 Combinatorial & Search Puzzles** - Skyscrapers, N-Queens, Numberlink, Graph Coloring, Cryptarithmetic, Rush Hour
 - **Agent-Friendly Mode** - Structured output with clear markers for AI agents and tools
   - Enable with `mode agent` command
   - Machine-parseable grid format with clear start/end markers
@@ -82,7 +83,7 @@ Once connected, type `help` to see available games, or `sudoku easy` to start pl
 - **Clean ASCII art grids** - perfectly aligned for easy parsing
 - **Deterministic seeding** - Replay any puzzle with the same seed
 - **Gymnasium-compatible RL Environment** (`PuzzleEnv`) for training agents
-- **Comprehensive test suite** (1067 tests, 94% coverage)
+- **Comprehensive test suite** (1323 tests, 94% coverage)
 - **Modern Python best practices:**
   - **Pydantic v2 native** - All models use ConfigDict for type safety
   - **Async native** - Full async/await support throughout
@@ -142,6 +143,17 @@ Once connected, type `help` to see available games, or `sudoku easy` to start pl
 | **Einstein's Puzzle** | 5 houses × 5 attributes | Multi-attribute deduction + Logic chains | ✅ Complete |
 | **Minesweeper** | 6×6 to 10×10 | Probabilistic reasoning + Safe deduction | ✅ Complete |
 
+### Combinatorial & Search Puzzles
+
+| Game | Grid Size | Constraint Types | Status |
+|------|-----------|------------------|--------|
+| **Skyscrapers** | 4×4 to 6×6 | Latin square + Visibility clues from 4 borders | ✅ Complete |
+| **N-Queens** | 6×6 to 12×12 | Placement + Row/Column/Diagonal attack avoidance | ✅ Complete |
+| **Numberlink** | 5×5 to 9×9 | Path connectivity + Non-crossing + Space filling | ✅ Complete |
+| **Graph Coloring** | 6-15 nodes | Graph coloring + Inequality + Global constraint | ✅ Complete |
+| **Cryptarithmetic** | 3-5 digit words | Arithmetic + AllDifferent + Carry propagation | ✅ Complete |
+| **Rush Hour** | 6×6 | Sequential planning + Spatial blocking + Search | ✅ Complete |
+
 ## Solver Profiles & Business Mapping
 
 Each game includes metadata for **constraint types**, **business analogies**, and **complexity profiles**, making it easy to:
@@ -185,7 +197,13 @@ resource_games = [
 | **Global Loop** | Slitherlink | Circuit design, Path finding |
 | **Boolean SAT** | Lights Out | Feature dependencies, Toggle systems |
 | **Cage Sums** | Killer Sudoku, Kakuro | Team budgets, Grouped constraints |
-| **AllDifferent** | Sudoku, KenKen | Resource uniqueness, Assignment problems |
+| **AllDifferent** | Sudoku, KenKen, Skyscrapers | Resource uniqueness, Assignment problems |
+| **Visibility/Ordering** | Skyscrapers | Priority ranking, Stack-based processing |
+| **Attack Avoidance** | N-Queens, Star Battle | Non-conflicting resource placement |
+| **Path Connectivity** | Numberlink, Nurikabe | Network routing, Cable layout |
+| **Graph Coloring** | Graph Coloring | Frequency assignment, Register allocation, Scheduling |
+| **Arithmetic Deduction** | Cryptarithmetic, KenKen | Code breaking, Constraint propagation |
+| **Sequential Planning** | Rush Hour, Sokoban | Logistics planning, Deadlock resolution |
 
 ## Quick Start
 
@@ -366,6 +384,14 @@ ADVANCED REASONING PUZZLES:
  23) Einstein's Puzzle - Who owns the fish? Multi-attribute deduction
  24) Minesweeper     - Find all mines using logical deduction
 
+COMBINATORIAL & SEARCH PUZZLES:
+ 25) Skyscrapers     - Latin square with visibility clues from borders
+ 26) N-Queens        - Place queens with no row/column/diagonal conflicts
+ 27) Numberlink      - Connect pairs with non-crossing paths filling the grid
+ 28) Graph Coloring  - Color nodes so no adjacent pair shares a color
+ 29) Cryptarithmetic - Assign digits to letters to satisfy an equation
+ 30) Rush Hour       - Slide vehicles to free the target car to the exit
+
 Commands:
   <number>  - Select game by number
   <name>    - Select game by name (e.g., 'sudoku')
@@ -422,7 +448,7 @@ The project includes a **Gymnasium-compatible environment** for training reinfor
 ```python
 from chuk_puzzles_gym.gym_env import PuzzleEnv
 
-# Create environment for any of the 24 games
+# Create environment for any of the 30 games
 env = PuzzleEnv("sudoku", difficulty="easy", seed=42)
 
 # Reset to start a new episode
@@ -441,7 +467,7 @@ games = PuzzleEnv.available_games()
 
 ### Features
 
-- **All 24 games** accessible through unified API
+- **All 30 games** accessible through unified API
 - **Configurable rewards** for correct moves, invalid attempts, completion bonuses
 - **Hint system** with optional budget limits
 - **Solver-free mode** for pure reasoning benchmarks
@@ -555,7 +581,7 @@ Generate synthetic puzzle datasets for training and benchmarking LLMs and constr
 ### CLI Usage
 
 ```bash
-# Generate 100 puzzles per game/difficulty for all 24 games
+# Generate 100 puzzles per game/difficulty for all 30 games
 chuk-puzzles-export -o puzzles.jsonl
 
 # Specific games only
@@ -713,6 +739,9 @@ When `include_trace=True` (default), each problem includes step-by-step solution
 | Hitori | `duplicate_elimination` |
 | Bridges | `connectivity_constraint` |
 | Slitherlink | `loop_constraint` |
+| Graph Coloring | `graph_coloring_constraint` |
+| Cryptarithmetic | `arithmetic_constraint` |
+| Rush Hour | `sequential_planning` |
 | Others | `constraint_propagation` |
 
 ### Example: Generate Training Data
@@ -741,9 +770,9 @@ With default settings (`-n 100` per game/difficulty):
 
 | Configuration | Problems Generated |
 |--------------|-------------------|
-| All games, all difficulties | 24 games × 3 difficulties × 100 = 7,200 |
+| All games, all difficulties | 30 games × 3 difficulties × 100 = 9,000 |
 | Single game, all difficulties | 1 × 3 × 100 = 300 |
-| All games, single difficulty | 24 × 1 × 100 = 2,400 |
+| All games, single difficulty | 30 × 1 × 100 = 3,000 |
 
 ### Integration with chuk-gym-core
 
@@ -952,7 +981,7 @@ pip install -e ".[dev]"
 
 ### Testing
 
-The project has comprehensive test coverage (94%, 1067 tests):
+The project has comprehensive test coverage (94%, 1323 tests):
 
 ```bash
 # Run all tests
@@ -1003,7 +1032,7 @@ The project follows modern Python best practices with a **9.8/10 compliance scor
 - ✅ **Test Coverage** (9.5/10) - 94% overall, most files ≥90%
 
 #### Quality Metrics
-- **1067 tests** - All passing ✅
+- **1323 tests** - All passing ✅
 - **94% coverage** - Exceeds 90% threshold ✅
 - **Zero linting errors** - Clean codebase ✅
 - **Full type safety** - MyPy passes ✅
@@ -1150,7 +1179,7 @@ chuk-puzzles-gym/
 │           │   ├── __init__.py
 │           │   ├── game.py
 │           │   └── config.py
-│           └── ... (24 games total)
+│           └── ... (30 games total)
 ├── tests/
 │   ├── test_puzzle_game.py       # Base class tests
 │   ├── test_deterministic_seeding.py  # Seeding tests
@@ -1160,6 +1189,12 @@ chuk-puzzles-gym/
 ├── examples/
 │   ├── simple_client.py          # Telnet client example
 │   ├── websocket_client.py       # WebSocket client example
+│   ├── example_skyscrapers.py    # Skyscrapers game logic demo
+│   ├── example_nqueens.py        # N-Queens game logic demo
+│   ├── example_numberlink.py     # Numberlink game logic demo
+│   ├── example_graph_coloring.py # Graph Coloring game logic demo
+│   ├── example_cryptarithmetic.py# Cryptarithmetic game logic demo
+│   ├── example_rush_hour.py      # Rush Hour game logic demo
 │   └── README.md                 # Example usage guide
 ├── .github/workflows/            # CI/CD workflows
 ├── pyproject.toml                # Modern Python project config
@@ -1172,14 +1207,15 @@ chuk-puzzles-gym/
 
 ### Key Statistics
 
-- **Test Coverage**: 94% overall (1067 tests, all passing)
+- **Test Coverage**: 94% overall (1323 tests, all passing)
 - **Code Quality Score**: 9.8/10 (near perfect compliance)
-- **Games Implemented**: 24 complete puzzle types
+- **Games Implemented**: 30 complete puzzle types
   - 7 Classic Logic Puzzles
   - 7 Advanced CP-SAT Puzzles
   - 5 Specialized Constraint Puzzles
   - 2 Optimization Challenges
   - 3 Advanced Reasoning Puzzles
+  - 6 Combinatorial & Search Puzzles
 - **Supported Transports**: 4 (Telnet, TCP, WebSocket, WS-Telnet)
 - **Agent-Friendly Mode**: Structured output for AI tools
 - **Gymnasium API**: RL-compatible environment for all games
@@ -1212,7 +1248,7 @@ Test the generality of constraint solvers (like MCP solvers):
 
 Learn about constraint satisfaction problems:
 
-- **24 different puzzle types** demonstrating various constraint types:
+- **30 different puzzle types** demonstrating various constraint types:
   - AllDifferent constraints (Sudoku, KenKen, Futoshiki)
   - Arithmetic constraints (KenKen, Kakuro, Killer Sudoku)
   - Boolean/SAT constraints (Lights Out, Binary Puzzle)
@@ -1222,9 +1258,14 @@ Learn about constraint satisfaction problems:
   - Temporal reasoning (Task Scheduler)
   - Connectivity constraints (Nurikabe, Slitherlink)
   - Probabilistic reasoning (Minesweeper)
-  - And more!
+  - Graph coloring (Graph Coloring)
+  - Arithmetic deduction (Cryptarithmetic)
+  - Sequential planning (Rush Hour)
+  - Visibility constraints (Skyscrapers)
+  - Attack avoidance (N-Queens)
+  - Path connectivity (Numberlink)
 - **Well-documented code** showing puzzle generation algorithms
-- **Comprehensive tests** (1067 tests, 94% coverage) demonstrating validation
+- **Comprehensive tests** (1323 tests, 94% coverage) demonstrating validation
 - **Deterministic seeding** - Reproduce any puzzle for debugging/testing
 - **Production-ready** - 9.8/10 code quality score
 - **Type-safe** - Full Pydantic v2 and MyPy compliance

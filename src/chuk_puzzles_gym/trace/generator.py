@@ -711,6 +711,93 @@ class TraceGenerator:
         """Generate trace for Einstein's Puzzle (handles 'einstein's puzzle' -> 'einsteins_puzzle')."""
         return self._generate_einstein(game)
 
+    def _generate_graph_coloring(self, game: PuzzleGame) -> Trace:
+        """Generate trace for Graph Coloring puzzle."""
+        problem_id = f"graph_coloring_{game.difficulty.value}_{game.seed}"
+        steps: list[Step] = []
+
+        solution = getattr(game, "solution", {})
+        initial_coloring = getattr(game, "initial_coloring", {})
+        step_idx = 0
+
+        for node in sorted(solution.keys()):
+            if node not in initial_coloring:
+                color = solution[node]
+                step = Step(
+                    index=step_idx,
+                    operation=StepOperation.PLACE,
+                    before_state=f"node({node})=uncolored",
+                    after_state=f"node({node})=color{color}",
+                    output_value=color,
+                    position=(node,),
+                    rule_applied="graph_coloring_constraint",
+                    explanation=f"Color node {node} with color {color}, avoiding conflicts with adjacent nodes.",
+                )
+                steps.append(step)
+                step_idx += 1
+
+        return Trace(
+            problem_id=problem_id,
+            steps=steps,
+            checkpoints=self._identify_checkpoints(steps),
+        )
+
+    def _generate_cryptarithmetic(self, game: PuzzleGame) -> Trace:
+        """Generate trace for Cryptarithmetic puzzle."""
+        problem_id = f"cryptarithmetic_{game.difficulty.value}_{game.seed}"
+        steps: list[Step] = []
+
+        letter_mapping = getattr(game, "letter_mapping", {})
+        initial_mapping = getattr(game, "initial_mapping", {})
+        step_idx = 0
+
+        for letter in sorted(letter_mapping.keys()):
+            if letter not in initial_mapping:
+                digit = letter_mapping[letter]
+                step = Step(
+                    index=step_idx,
+                    operation=StepOperation.DEDUCE,
+                    before_state=f"letter({letter})=unknown",
+                    after_state=f"letter({letter})={digit}",
+                    output_value=digit,
+                    rule_applied="arithmetic_constraint",
+                    explanation=f"Assign digit {digit} to letter {letter} to satisfy the equation.",
+                )
+                steps.append(step)
+                step_idx += 1
+
+        return Trace(
+            problem_id=problem_id,
+            steps=steps,
+            checkpoints=self._identify_checkpoints(steps),
+        )
+
+    def _generate_rush_hour(self, game: PuzzleGame) -> Trace:
+        """Generate trace for Rush Hour puzzle."""
+        problem_id = f"rush_hour_{game.difficulty.value}_{game.seed}"
+        steps: list[Step] = []
+
+        # Rush Hour traces are move sequences; generate from hint system
+        vehicles = getattr(game, "vehicles", {})
+        if vehicles:
+            step = Step(
+                index=0,
+                operation=StepOperation.DEDUCE,
+                before_state="target_car=blocked",
+                after_state="target_car=exit",
+                output_value="solve",
+                rule_applied="sequential_planning",
+                explanation=f"Slide vehicles to clear a path for car X to reach the exit. "
+                f"Minimum solution: {getattr(game, 'min_solution_moves', '?')} moves.",
+            )
+            steps.append(step)
+
+        return Trace(
+            problem_id=problem_id,
+            steps=steps,
+            checkpoints=self._identify_checkpoints(steps),
+        )
+
 
 def generate_trace(game: PuzzleGame) -> Trace:
     """

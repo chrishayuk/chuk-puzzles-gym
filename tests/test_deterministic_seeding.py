@@ -47,6 +47,10 @@ def get_game_state(game):
     if hasattr(game, "items"):
         return [(i.name, i.weight, i.value) for i in game.items]
 
+    # Cryptarithmetic uses letter_mapping
+    if hasattr(game, "letter_mapping"):
+        return game.letter_mapping
+
     # Fallback - use render_grid output
     return game.render_grid()
 
@@ -71,6 +75,11 @@ GRID_GAMES = [
     "star_battle",
     "sokoban",
     "nurikabe",
+    "skyscrapers",
+    "nqueens",
+    "numberlink",
+    "graph_coloring",
+    "rush_hour",
 ]
 
 # Games with non-grid state
@@ -81,6 +90,7 @@ NON_GRID_GAMES = [
     "minesweeper",
     "knapsack",
     # "scheduler",  # Task attributes differ
+    "cryptarithmetic",
 ]
 
 
