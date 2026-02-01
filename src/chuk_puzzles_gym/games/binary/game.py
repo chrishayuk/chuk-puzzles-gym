@@ -358,6 +358,8 @@ class BinaryPuzzleGame(PuzzleGame):
         Returns:
             Tuple of (hint_data, hint_message) or None if puzzle is complete
         """
+        if not self.can_use_hint():
+            return None
         empty_cells = [(r, c) for r in range(self.size) for c in range(self.size) if self.grid[r][c] == -1]
         if not empty_cells:
             return None

@@ -326,6 +326,8 @@ class TentsGame(PuzzleGame):
         Returns:
             Tuple of (hint_data, hint_message) or None if puzzle is complete
         """
+        if not self.can_use_hint():
+            return None
         # Find a tent location from solution that hasn't been placed
         for r in range(self.size):
             for c in range(self.size):

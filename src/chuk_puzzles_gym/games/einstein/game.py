@@ -281,6 +281,8 @@ class EinsteinGame(PuzzleGame):
         Returns:
             Tuple of (hint_data, hint_message) or None
         """
+        if not self.can_use_hint():
+            return None
         # Find first unassigned attribute in solution
         for i in range(self.num_houses):
             for attr in ATTRIBUTES:

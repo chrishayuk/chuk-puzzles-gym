@@ -415,6 +415,8 @@ class BridgesGame(PuzzleGame):
 
     async def get_hint(self) -> tuple[Any, str] | None:
         """Get a hint for the next move."""
+        if not self.can_use_hint():
+            return None
         # Find a bridge in the solution that's not yet placed correctly
         for bridge_key, solution_count in self.solution.items():
             current_count = self.bridges.get(bridge_key, 0)

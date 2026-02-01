@@ -362,6 +362,11 @@ class CryptarithmeticGame(PuzzleGame):
 
         return "\n".join(lines)
 
+    def get_stats(self) -> str:
+        """Get current game statistics."""
+        assigned = sum(1 for v in self.player_mapping.values() if v is not None)
+        return f"Moves: {self.moves_made} | Assigned: {assigned}/{len(self.letters)} | Seed: {self.seed}"
+
     def get_rules(self) -> str:
         return (
             "CRYPTARITHMETIC\n"

@@ -599,10 +599,6 @@ class ArcadeHandler(TelnetHandler):
         if self.game_handler and cmd_enum in self.game_handler.supported_commands:
             result = await self.game_handler.handle_command(cmd_enum, parts[1:])
 
-            # Track invalid moves
-            if not result.result.success:
-                self.current_game.invalid_moves += 1
-
             # Send result based on output mode
             code = "OK" if result.result.success else "INVALID"
             await self.send_result(result.result.success, result.result.message, code)
@@ -626,9 +622,7 @@ class ArcadeHandler(TelnetHandler):
                 num = int(parts[3])
 
                 result = await self.current_game.validate_move(row, col, num)
-
-                if not result.success:
-                    self.current_game.invalid_moves += 1
+                self.current_game.record_move((row, col), result.success)
 
                 await self.send_result(result.success, result.message, "PLACED" if result.success else "INVALID_MOVE")
 
@@ -639,7 +633,6 @@ class ArcadeHandler(TelnetHandler):
                         await self.send_game_complete()
 
             except ValueError:
-                self.current_game.invalid_moves += 1
                 await self.send_result(False, "Invalid input. Use numbers only.", "PARSE_ERROR")
             return
 
@@ -653,9 +646,7 @@ class ArcadeHandler(TelnetHandler):
                 col = int(parts[2])
 
                 result = await self.current_game.validate_move(row, col, 0)
-
-                if not result.success:
-                    self.current_game.invalid_moves += 1
+                self.current_game.record_move((row, col), result.success)
 
                 await self.send_result(result.success, result.message, "CLEARED" if result.success else "INVALID_CLEAR")
 
@@ -663,7 +654,6 @@ class ArcadeHandler(TelnetHandler):
                     await self.display_puzzle()
 
             except ValueError:
-                self.current_game.invalid_moves += 1
                 await self.send_result(False, "Invalid input. Use numbers only.", "PARSE_ERROR")
             return
 
@@ -693,9 +683,7 @@ class ArcadeHandler(TelnetHandler):
                 col = int(parts[2])
 
                 result = await self.current_game.validate_move(row, col)
-
-                if not result.success:
-                    self.current_game.invalid_moves += 1
+                self.current_game.record_move((row, col), result.success)
 
                 await self.send_result(result.success, result.message, "PRESSED" if result.success else "INVALID_PRESS")
 
@@ -706,7 +694,6 @@ class ArcadeHandler(TelnetHandler):
                         await self.send_game_complete()
 
             except ValueError:
-                self.current_game.invalid_moves += 1
                 await self.send_result(False, "Invalid input. Use numbers only.", "PARSE_ERROR")
             return
 
@@ -718,9 +705,7 @@ class ArcadeHandler(TelnetHandler):
 
             cat1, val1, cat2, val2 = parts[1], parts[2], parts[3], parts[4]
             result = await self.current_game.validate_move(cat1, val1, cat2, val2, True)
-
-            if not result.success:
-                self.current_game.invalid_moves += 1
+            self.current_game.record_move((cat1, val1, cat2, val2), result.success)
 
             await self.send_result(result.success, result.message, "CONNECTED" if result.success else "INVALID_CONNECT")
             if result.success:
@@ -736,9 +721,7 @@ class ArcadeHandler(TelnetHandler):
 
             cat1, val1, cat2, val2 = parts[1], parts[2], parts[3], parts[4]
             result = await self.current_game.validate_move(cat1, val1, cat2, val2, False)
-
-            if not result.success:
-                self.current_game.invalid_moves += 1
+            self.current_game.record_move((cat1, val1, cat2, val2), result.success)
 
             await self.send_result(result.success, result.message, "EXCLUDED" if result.success else "INVALID_EXCLUDE")
             if result.success:
@@ -758,9 +741,7 @@ class ArcadeHandler(TelnetHandler):
                 col = int(parts[2])
 
                 result = await self.current_game.validate_move("reveal", row, col)
-
-                if not result.success:
-                    self.current_game.invalid_moves += 1
+                self.current_game.record_move((row, col), result.success)
 
                 await self.send_result(
                     result.success, result.message, "REVEALED" if result.success else "INVALID_REVEAL"
@@ -783,7 +764,6 @@ class ArcadeHandler(TelnetHandler):
                                 await self.send_line("=" * 50 + "\n")
 
             except ValueError:
-                self.current_game.invalid_moves += 1
                 await self.send_result(False, "Invalid input. Use numbers only.", "PARSE_ERROR")
             return
 
@@ -797,9 +777,7 @@ class ArcadeHandler(TelnetHandler):
                 col = int(parts[2])
 
                 result = await self.current_game.validate_move("flag", row, col)
-
-                if not result.success:
-                    self.current_game.invalid_moves += 1
+                self.current_game.record_move((row, col), result.success)
 
                 await self.send_result(result.success, result.message, "FLAGGED" if result.success else "INVALID_FLAG")
 
@@ -807,7 +785,6 @@ class ArcadeHandler(TelnetHandler):
                     await self.display_puzzle()
 
             except ValueError:
-                self.current_game.invalid_moves += 1
                 await self.send_result(False, "Invalid input. Use numbers only.", "PARSE_ERROR")
             return
 
@@ -824,9 +801,7 @@ class ArcadeHandler(TelnetHandler):
                 state = int(parts[4])
 
                 result = await self.current_game.validate_move(edge_type, row, col, state)
-
-                if not result.success:
-                    self.current_game.invalid_moves += 1
+                self.current_game.record_move((edge_type, row, col), result.success)
 
                 await self.send_result(result.success, result.message, "SET" if result.success else "INVALID_SET")
 
@@ -837,7 +812,6 @@ class ArcadeHandler(TelnetHandler):
                         await self.send_game_complete()
 
             except ValueError:
-                self.current_game.invalid_moves += 1
                 await self.send_result(False, "Invalid input. Use numbers only for row, col, state.", "PARSE_ERROR")
             return
 
@@ -851,9 +825,7 @@ class ArcadeHandler(TelnetHandler):
                 guess = [int(p) for p in parts[1:]]
 
                 result = await self.current_game.validate_move(*guess)
-
-                if not result.success:
-                    self.current_game.invalid_moves += 1
+                self.current_game.record_move(tuple(guess), result.success)
 
                 await self.send_result(result.success, result.message, "GUESSED" if result.success else "INVALID_GUESS")
 
@@ -874,7 +846,6 @@ class ArcadeHandler(TelnetHandler):
                         await self.send_line("=" * 50 + "\n")
 
             except ValueError:
-                self.current_game.invalid_moves += 1
                 await self.send_result(False, "Invalid input. Use numbers only.", "PARSE_ERROR")
             return
 
@@ -888,9 +859,7 @@ class ArcadeHandler(TelnetHandler):
                 item_index = int(parts[1])
 
                 result = await self.current_game.validate_move("select", item_index)
-
-                if not result.success:
-                    self.current_game.invalid_moves += 1
+                self.current_game.record_move((item_index,), result.success)
 
                 await self.send_result(
                     result.success, result.message, "SELECTED" if result.success else "INVALID_SELECT"
@@ -900,7 +869,6 @@ class ArcadeHandler(TelnetHandler):
                     await self.display_puzzle()
 
             except ValueError:
-                self.current_game.invalid_moves += 1
                 await self.send_result(False, "Invalid input. Use numbers only.", "PARSE_ERROR")
             return
 
@@ -913,9 +881,7 @@ class ArcadeHandler(TelnetHandler):
                 item_index = int(parts[1])
 
                 result = await self.current_game.validate_move("deselect", item_index)
-
-                if not result.success:
-                    self.current_game.invalid_moves += 1
+                self.current_game.record_move((item_index,), result.success)
 
                 await self.send_result(
                     result.success, result.message, "DESELECTED" if result.success else "INVALID_DESELECT"
@@ -925,7 +891,6 @@ class ArcadeHandler(TelnetHandler):
                     await self.display_puzzle()
 
             except ValueError:
-                self.current_game.invalid_moves += 1
                 await self.send_result(False, "Invalid input. Use numbers only.", "PARSE_ERROR")
             return
 
@@ -941,9 +906,7 @@ class ArcadeHandler(TelnetHandler):
                 color = parts[3].lower()
 
                 result = await self.current_game.validate_move(row, col, color)
-
-                if not result.success:
-                    self.current_game.invalid_moves += 1
+                self.current_game.record_move((row, col), result.success)
 
                 await self.send_result(result.success, result.message, "MARKED" if result.success else "INVALID_MARK")
 
@@ -954,7 +917,6 @@ class ArcadeHandler(TelnetHandler):
                         await self.send_game_complete()
 
             except ValueError:
-                self.current_game.invalid_moves += 1
                 await self.send_result(False, "Invalid input. Row and col must be numbers.", "PARSE_ERROR")
             return
 
@@ -969,9 +931,7 @@ class ArcadeHandler(TelnetHandler):
                 col = int(parts[2])
 
                 result = await self.current_game.validate_move(row, col, "shade")
-
-                if not result.success:
-                    self.current_game.invalid_moves += 1
+                self.current_game.record_move((row, col), result.success)
 
                 await self.send_result(result.success, result.message, "SHADED" if result.success else "INVALID_SHADE")
 
@@ -982,7 +942,6 @@ class ArcadeHandler(TelnetHandler):
                         await self.send_game_complete()
 
             except ValueError:
-                self.current_game.invalid_moves += 1
                 await self.send_result(False, "Invalid input. Use numbers only.", "PARSE_ERROR")
             return
 
@@ -1000,9 +959,7 @@ class ArcadeHandler(TelnetHandler):
                 count = int(parts[5])
 
                 result = await self.current_game.validate_move(r1, c1, r2, c2, count)
-
-                if not result.success:
-                    self.current_game.invalid_moves += 1
+                self.current_game.record_move((r1, c1, r2, c2), result.success)
 
                 await self.send_result(
                     result.success, result.message, "BRIDGED" if result.success else "INVALID_BRIDGE"
@@ -1015,7 +972,6 @@ class ArcadeHandler(TelnetHandler):
                         await self.send_game_complete()
 
             except ValueError:
-                self.current_game.invalid_moves += 1
                 await self.send_result(False, "Invalid input. Use numbers only.", "PARSE_ERROR")
             return
 
@@ -1028,9 +984,7 @@ class ArcadeHandler(TelnetHandler):
             direction = parts[1].lower()
 
             result = await self.current_game.validate_move(direction)
-
-            if not result.success:
-                self.current_game.invalid_moves += 1
+            self.current_game.record_move((direction,), result.success)
 
             await self.send_result(result.success, result.message, "MOVED" if result.success else "INVALID_MOVE")
 
@@ -1054,9 +1008,7 @@ class ArcadeHandler(TelnetHandler):
                 start_time = int(parts[3])
 
                 result = await self.current_game.validate_move(task_id, worker_id, start_time)
-
-                if not result.success:
-                    self.current_game.invalid_moves += 1
+                self.current_game.record_move((task_id,), result.success)
 
                 await self.send_result(
                     result.success, result.message, "ASSIGNED" if result.success else "INVALID_ASSIGN"
@@ -1068,7 +1020,6 @@ class ArcadeHandler(TelnetHandler):
                         await self.send_game_complete()
 
             except ValueError:
-                self.current_game.invalid_moves += 1
                 await self.send_result(False, "Invalid input. Use numbers only.", "PARSE_ERROR")
             return
 
@@ -1081,9 +1032,7 @@ class ArcadeHandler(TelnetHandler):
                 task_id = int(parts[1])
 
                 result = await self.current_game.validate_move(task_id, 0, -1)
-
-                if not result.success:
-                    self.current_game.invalid_moves += 1
+                self.current_game.record_move((task_id,), result.success)
 
                 await self.send_result(
                     result.success, result.message, "UNASSIGNED" if result.success else "INVALID_UNASSIGN"
@@ -1093,7 +1042,6 @@ class ArcadeHandler(TelnetHandler):
                     await self.display_puzzle()
 
             except ValueError:
-                self.current_game.invalid_moves += 1
                 await self.send_result(False, "Invalid input. Use numbers only.", "PARSE_ERROR")
             return
 

@@ -255,6 +255,11 @@ class SkyscrapersGame(PuzzleGame):
 
         return "\n".join(lines)
 
+    def get_stats(self) -> str:
+        """Get current game statistics."""
+        empty = sum(1 for r in range(self.size) for c in range(self.size) if self.grid[r][c] == 0)
+        return f"Moves: {self.moves_made} | Empty cells: {empty} | Grid: {self.size}x{self.size} | Seed: {self.seed}"
+
     def get_rules(self) -> str:
         return (
             f"SKYSCRAPERS ({self.size}x{self.size})\n"

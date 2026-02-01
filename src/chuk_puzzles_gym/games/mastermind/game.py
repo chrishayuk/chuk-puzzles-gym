@@ -211,6 +211,8 @@ class MastermindGame(PuzzleGame):
         Returns:
             Tuple of (hint_data, hint_message) or None if no hints available
         """
+        if not self.can_use_hint():
+            return None
         if self.is_complete():
             return None
 

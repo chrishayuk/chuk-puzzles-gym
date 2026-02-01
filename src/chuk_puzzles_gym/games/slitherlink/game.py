@@ -272,6 +272,8 @@ class SlitherlinkGame(PuzzleGame):
         Returns:
             Tuple of (hint_data, hint_message) or None
         """
+        if not self.can_use_hint():
+            return None
         # Find an edge that's in the solution but not set by player
         for row in range(self.size + 1):
             for col in range(self.size):

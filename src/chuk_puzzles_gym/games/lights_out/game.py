@@ -173,6 +173,8 @@ class LightsOutGame(PuzzleGame):
         Returns:
             Tuple of (hint_data, hint_message) or None if puzzle is complete
         """
+        if not self.can_use_hint():
+            return None
         # Find a cell in the solution that should be pressed
         for row in range(self.size):
             for col in range(self.size):

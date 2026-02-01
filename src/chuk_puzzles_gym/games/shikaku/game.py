@@ -327,6 +327,8 @@ class ShikakuGame(PuzzleGame):
 
     async def get_hint(self) -> tuple[Any, str] | None:
         """Get a hint for the next move."""
+        if not self.can_use_hint():
+            return None
         # Find a rectangle from the solution that hasn't been placed yet
         solution_rects: dict[int, list[tuple[int, int]]] = {}
         for r in range(self.size):

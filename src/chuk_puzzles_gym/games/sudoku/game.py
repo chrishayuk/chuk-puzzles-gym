@@ -249,6 +249,8 @@ class SudokuGame(PuzzleGame):
         Returns:
             Tuple of (hint_data, hint_message) or None if puzzle is complete
         """
+        if not self.can_use_hint():
+            return None
         empty_cells = [(r, c) for r in range(9) for c in range(9) if self.grid[r][c] == 0]
         if not empty_cells:
             return None

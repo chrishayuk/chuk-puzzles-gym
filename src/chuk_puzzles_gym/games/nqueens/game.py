@@ -296,6 +296,11 @@ class NQueensGame(PuzzleGame):
 
         return "\n".join(lines)
 
+    def get_stats(self) -> str:
+        """Get current game statistics."""
+        placed = sum(1 for r in range(self.size) for c in range(self.size) if self.grid[r][c] == 1)
+        return f"Moves: {self.moves_made} | Queens: {placed}/{self.size} | Board: {self.size}x{self.size} | Seed: {self.seed}"
+
     def get_rules(self) -> str:
         return (
             f"N-QUEENS ({self.size}x{self.size})\n"

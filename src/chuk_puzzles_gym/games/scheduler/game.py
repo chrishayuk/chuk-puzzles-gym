@@ -316,6 +316,8 @@ class SchedulerGame(PuzzleGame):
         Returns:
             Tuple of (hint_data, hint_message) or None
         """
+        if not self.can_use_hint():
+            return None
         # Find an unscheduled task that's in the optimal solution
         for task_id in range(self.num_tasks):
             if task_id not in self.schedule and task_id in self.optimal_schedule:

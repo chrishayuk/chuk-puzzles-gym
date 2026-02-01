@@ -4,9 +4,13 @@ from typing import TYPE_CHECKING
 
 from ...models import GameCommand, MoveResult
 from .._base import CommandResult, GameCommandHandler
+from .game import COLOR_NAMES
 
 if TYPE_CHECKING:
     from .game import GraphColoringGame
+
+# Build a lookup from lowercase color name to color number
+_COLOR_NAME_TO_NUM = {name.lower(): i + 1 for i, name in enumerate(COLOR_NAMES)}
 
 
 class GraphColoringCommandHandler(GameCommandHandler):
@@ -36,6 +40,16 @@ class GraphColoringCommandHandler(GameCommandHandler):
         else:
             return self.error_result(f"Unknown command: {cmd}")
 
+    def _parse_color(self, value: str) -> int | None:
+        """Parse a color argument as either an integer or a color name."""
+        # Try integer first
+        try:
+            return int(value)
+        except ValueError:
+            pass
+        # Try color name lookup
+        return _COLOR_NAME_TO_NUM.get(value.lower())
+
     async def _handle_place(self, args: list[str]) -> CommandResult:
         """Handle the PLACE command: place <node> <color>."""
         if len(args) != 2:
@@ -45,10 +59,13 @@ class GraphColoringCommandHandler(GameCommandHandler):
             )
 
         node = self.parse_int(args[0], "node")
-        color = self.parse_int(args[1], "color")
+        color = self._parse_color(args[1])
 
-        if node is None or color is None:
-            return self.error_result("Node and color must be integers.")
+        if node is None:
+            return self.error_result("Node must be an integer.")
+        if color is None:
+            valid = ", ".join(f"{i + 1}={COLOR_NAMES[i]}" for i in range(self.game.num_colors))
+            return self.error_result(f"Invalid color. Use a number or name: {valid}")
 
         result = await self.game.validate_move(node, color)
 

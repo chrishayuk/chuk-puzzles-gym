@@ -317,6 +317,12 @@ class NumberlinkGame(PuzzleGame):
 
         return "\n".join(lines)
 
+    def get_stats(self) -> str:
+        """Get current game statistics."""
+        filled = sum(1 for r in range(self.size) for c in range(self.size) if self.grid[r][c] != 0)
+        total = self.size * self.size
+        return f"Moves: {self.moves_made} | Filled: {filled}/{total} | Pairs: {self.num_pairs} | Seed: {self.seed}"
+
     def get_rules(self) -> str:
         return (
             f"NUMBERLINK ({self.size}x{self.size}, {self.num_pairs} pairs)\n"

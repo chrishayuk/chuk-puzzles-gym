@@ -310,6 +310,8 @@ class MinesweeperGame(PuzzleGame):
         Returns:
             Tuple of (hint_data, hint_message) or None
         """
+        if not self.can_use_hint():
+            return None
         if self.game_over:
             return None
 

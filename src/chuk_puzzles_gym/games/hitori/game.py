@@ -395,6 +395,8 @@ class HitoriGame(PuzzleGame):
 
     async def get_hint(self) -> tuple[Any, str] | None:
         """Get a hint for the next move."""
+        if not self.can_use_hint():
+            return None
         # Find a cell that should be shaded but isn't, or vice versa
         for r in range(self.size):
             for c in range(self.size):

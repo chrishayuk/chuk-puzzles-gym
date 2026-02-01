@@ -479,6 +479,8 @@ class NurikabeGame(PuzzleGame):
         Returns:
             Tuple of (hint_data, hint_message) or None
         """
+        if not self.can_use_hint():
+            return None
         # Find a cell that differs from solution
         for row in range(self.size):
             for col in range(self.size):

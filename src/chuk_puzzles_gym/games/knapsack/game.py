@@ -255,6 +255,8 @@ class KnapsackGame(PuzzleGame):
         Returns:
             Tuple of (hint_data, hint_message) or None
         """
+        if not self.can_use_hint():
+            return None
         # Suggest selecting an item that's in the optimal solution but not selected
         for i in range(len(self.items)):
             if self.optimal_selection[i] and not self.selection[i]:

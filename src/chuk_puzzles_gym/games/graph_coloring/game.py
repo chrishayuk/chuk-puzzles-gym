@@ -289,6 +289,11 @@ class GraphColoringGame(PuzzleGame):
 
         return "\n".join(lines)
 
+    def get_stats(self) -> str:
+        """Get current game statistics."""
+        colored = sum(1 for n in range(1, self.num_nodes + 1) if self.coloring.get(n, 0) > 0)
+        return f"Moves: {self.moves_made} | Colored: {colored}/{self.num_nodes} | Edges: {len(self.edges)} | Seed: {self.seed}"
+
     def get_rules(self) -> str:
         return (
             f"GRAPH COLORING ({self.num_nodes} nodes, {self.num_colors} colors)\n"
@@ -298,9 +303,11 @@ class GraphColoringGame(PuzzleGame):
         )
 
     def get_commands(self) -> str:
+        color_map = ", ".join(f"{i + 1}={COLOR_NAMES[i]}" for i in range(self.num_colors))
         return (
             "Commands:\n"
-            f"  place <node> <color>  - Color a node (1-{self.num_colors})\n"
+            f"  place <node> <color>  - Color a node (number or name)\n"
+            f"  Colors: {color_map}\n"
             "  clear <node>          - Remove color from a node\n"
             "  hint                  - Get a hint\n"
             "  check                 - Check if solved\n"

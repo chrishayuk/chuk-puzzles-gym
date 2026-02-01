@@ -454,6 +454,10 @@ class RushHourGame(PuzzleGame):
 
         return "\n".join(lines)
 
+    def get_stats(self) -> str:
+        """Get current game statistics."""
+        return f"Moves: {self.moves_made} | Vehicles: {len(self.vehicles)} | Grid: {self.size}x{self.size} | Seed: {self.seed}"
+
     def get_rules(self) -> str:
         return (
             f"RUSH HOUR ({self.size}x{self.size})\n"
