@@ -20,6 +20,7 @@ from .evaluation import (
     EpisodeTracer,
     EvaluationSummary,
     MoveRecord,
+    ReasoningMetrics,
     SolverConfig,
     TraceEvent,
 )
@@ -42,6 +43,7 @@ __all__ = [
     "EpisodeTracer",
     "EvaluationSummary",
     "MoveRecord",
+    "ReasoningMetrics",
     "SolverConfig",
     "TraceEvent",
 ]

@@ -10,7 +10,7 @@
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| **24 Puzzle Games** | ✅ Complete | All with easy/medium/hard difficulty |
+| **30 Puzzle Games** | ✅ Complete | All with easy/medium/hard difficulty |
 | **Deterministic Seeding** | ✅ Complete | Reproducible puzzles via seed |
 | **Agent Mode** | ✅ Complete | Structured output with markers |
 | **Constraint Types** | ✅ Complete | Every game has `constraint_types` |
@@ -20,7 +20,8 @@
 | **Dataset Export** | ✅ Complete | `chuk-puzzles-export` JSONL with traces |
 | **Step Traces** | ✅ Complete | chuk-gym-core compatible traces |
 | **Gymnasium Env** | ✅ Complete | `PuzzleEnv` for RL |
-| **Test Suite** | ✅ Complete | 1142 tests, 94% coverage |
+| **Reasoning Depth Metrics** | ✅ Complete | Backtrack detection, progress steadiness, error patterns |
+| **Test Suite** | ✅ Complete | 1323 tests, 94% coverage |
 | **Type Safety** | ✅ Complete | Pydantic v2, MyPy passing |
 
 ---
@@ -81,13 +82,14 @@ Each tagged with:
 - Reasoning skills involved
 - Optimal step count
 
-### ✅ Baseline metrics
+### ✅ Baseline metrics + Reasoning depth
 
 `chuk-puzzles-eval` provides:
 - Solve rate
 - Average steps / optimal steps
 - Invalid move rate
 - Wall clock time
+- **Reasoning depth metrics**: backtrack rate, progress steadiness, reasoning overhead, error streak analysis, solver distance traces
 
 ```bash
 chuk-puzzles-eval -g sudoku -n 100 -o json > baseline.json
@@ -142,6 +144,7 @@ Auto-advance difficulty based on:
 - Solve rate threshold
 - Invalid step rate
 - Average branching depth encountered
+- Reasoning depth metrics (backtrack rate, progress steadiness, reasoning overhead)
 
 ---
 
@@ -171,7 +174,7 @@ Track:
 - Heuristic agents
 - RL-trained agents
 
-Focus on **efficiency**, not just accuracy.
+Focus on **reasoning quality** (backtrack rate, progress steadiness, reasoning overhead), not just accuracy.
 
 ---
 

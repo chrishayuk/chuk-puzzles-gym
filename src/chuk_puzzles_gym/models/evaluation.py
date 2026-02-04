@@ -38,6 +38,132 @@ class MoveRecord(BaseModel):
     timestamp_ms: int = Field(default=0, description="Milliseconds since episode start")
 
 
+class ReasoningMetrics(BaseModel):
+    """Reasoning depth metrics for evaluating quality of agent reasoning.
+
+    Goes beyond binary success/failure to measure *how* an agent reasons:
+    - Backtrack detection: did the agent revise previous placements?
+    - Progress tracking: how steadily did the agent make progress?
+    - Error patterns: were errors isolated or clustered in streaks?
+    - Reasoning overhead: how much wasted work relative to optimal?
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    # Raw tracking data
+    backtrack_count: int = Field(
+        default=0,
+        ge=0,
+        description="Times agent placed a value at a previously filled position",
+    )
+    solver_distance_trace: list[int] = Field(
+        default_factory=list,
+        description="Remaining positions to fill after each valid move",
+    )
+    error_streak_max: int = Field(
+        default=0,
+        ge=0,
+        description="Longest consecutive run of invalid moves",
+    )
+    error_streaks: list[int] = Field(
+        default_factory=list,
+        description="Lengths of each consecutive error streak",
+    )
+    total_actions: int = Field(
+        default=0,
+        ge=0,
+        description="Total actions taken (valid + invalid)",
+    )
+    optimal_path_length: int | None = Field(
+        default=None,
+        ge=1,
+        description="Minimum steps to solve (from solver)",
+    )
+
+    @computed_field
+    @property
+    def reasoning_overhead(self) -> float:
+        """Ratio of total actions to optimal path length.
+
+        1.0 = perfect (no wasted actions). Higher = more wasted reasoning.
+        Returns 0.0 if optimal path length is unknown.
+        """
+        if self.optimal_path_length is None or self.optimal_path_length == 0:
+            return 0.0
+        if self.total_actions == 0:
+            return 0.0
+        return self.total_actions / self.optimal_path_length
+
+    @computed_field
+    @property
+    def backtrack_rate(self) -> float:
+        """Fraction of valid moves that were backtracks (revisions).
+
+        0.0 = no backtracks, 1.0 = every move was a revision.
+        """
+        valid_moves = len(self.solver_distance_trace)
+        if valid_moves == 0:
+            return 0.0
+        return self.backtrack_count / valid_moves
+
+    @computed_field
+    @property
+    def progress_velocity(self) -> float:
+        """Average progress per valid move (cells solved per step).
+
+        Measures how much closer to the solution each move gets.
+        1.0 = every move reduces remaining by exactly 1. Lower = backtracks/plateaus.
+        Returns 0.0 if insufficient data.
+        """
+        trace = self.solver_distance_trace
+        if len(trace) < 2:
+            return 0.0
+        total_progress = trace[0] - trace[-1]
+        steps = len(trace) - 1
+        if steps == 0:
+            return 0.0
+        return total_progress / steps
+
+    @computed_field
+    @property
+    def progress_steadiness(self) -> float:
+        """Measure of how monotonically progress decreased (0.0 to 1.0).
+
+        1.0 = perfectly monotonic progress (every move reduced remaining count).
+        0.0 = no monotonic progress at all.
+        """
+        trace = self.solver_distance_trace
+        if len(trace) < 2:
+            return 1.0
+        monotonic_steps = sum(1 for i in range(1, len(trace)) if trace[i] < trace[i - 1])
+        return monotonic_steps / (len(trace) - 1)
+
+    @computed_field
+    @property
+    def avg_error_streak(self) -> float:
+        """Average length of consecutive error streaks.
+
+        Returns 0.0 if no error streaks occurred.
+        """
+        if not self.error_streaks:
+            return 0.0
+        return sum(self.error_streaks) / len(self.error_streaks)
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to flat dictionary for reporting."""
+        return {
+            "backtrack_count": self.backtrack_count,
+            "backtrack_rate": round(self.backtrack_rate, 3),
+            "reasoning_overhead": round(self.reasoning_overhead, 3),
+            "progress_velocity": round(self.progress_velocity, 3),
+            "progress_steadiness": round(self.progress_steadiness, 3),
+            "error_streak_max": self.error_streak_max,
+            "avg_error_streak": round(self.avg_error_streak, 3),
+            "total_actions": self.total_actions,
+            "optimal_path_length": self.optimal_path_length,
+        }
+
+
 class EpisodeResult(BaseModel):
     """Complete result of a single puzzle episode with normalized metrics.
 
@@ -89,6 +215,12 @@ class EpisodeResult(BaseModel):
     move_history: list[MoveRecord] = Field(
         default_factory=list,
         description="Complete move history for detailed analysis",
+    )
+
+    # Reasoning depth metrics
+    reasoning_metrics: ReasoningMetrics | None = Field(
+        default=None,
+        description="Detailed reasoning depth metrics (backtracks, progress, error patterns)",
     )
 
     # Computed normalized metrics
@@ -154,7 +286,7 @@ class EpisodeResult(BaseModel):
 
     def to_summary_dict(self) -> dict[str, Any]:
         """One-line episode summary for logging/streaming."""
-        return {
+        d: dict[str, Any] = {
             "game": self.game,
             "seed": self.seed,
             "difficulty": self.difficulty.value,
@@ -165,6 +297,9 @@ class EpisodeResult(BaseModel):
             "efficiency": round(self.efficiency_score, 3),
             "time_ms": self.wall_time_ms,
         }
+        if self.reasoning_metrics is not None:
+            d["reasoning"] = self.reasoning_metrics.to_dict()
+        return d
 
     def to_jsonl(self) -> str:
         """Single-line JSON for streaming output."""
@@ -216,6 +351,35 @@ class EvaluationSummary(BaseModel):
         if not self.episodes:
             return 0.0
         return sum(e.wall_time_ms for e in self.episodes) / len(self.episodes)
+
+    @computed_field
+    @property
+    def avg_backtrack_rate(self) -> float:
+        """Average backtrack rate across episodes with reasoning metrics."""
+        with_metrics = [e for e in self.episodes if e.reasoning_metrics is not None]
+        if not with_metrics:
+            return 0.0
+        return sum(e.reasoning_metrics.backtrack_rate for e in with_metrics) / len(with_metrics)  # type: ignore[union-attr]
+
+    @computed_field
+    @property
+    def avg_reasoning_overhead(self) -> float:
+        """Average reasoning overhead across episodes with reasoning metrics."""
+        with_metrics = [
+            e for e in self.episodes if e.reasoning_metrics is not None and e.reasoning_metrics.reasoning_overhead > 0
+        ]
+        if not with_metrics:
+            return 0.0
+        return sum(e.reasoning_metrics.reasoning_overhead for e in with_metrics) / len(with_metrics)  # type: ignore[union-attr]
+
+    @computed_field
+    @property
+    def avg_progress_steadiness(self) -> float:
+        """Average progress steadiness across episodes with reasoning metrics."""
+        with_metrics = [e for e in self.episodes if e.reasoning_metrics is not None]
+        if not with_metrics:
+            return 0.0
+        return sum(e.reasoning_metrics.progress_steadiness for e in with_metrics) / len(with_metrics)  # type: ignore[union-attr]
 
 
 class TraceEvent(BaseModel):

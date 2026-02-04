@@ -62,10 +62,17 @@ Once connected, type `help` to see available games, or `sudoku easy` to start pl
   - Enable with `mode agent` command
   - Machine-parseable grid format with clear start/end markers
   - Compact output optimized for LLM tool integration
+- **Reasoning Depth Metrics** - Measure *how* agents reason, not just if they succeed
+  - Backtrack detection (did the agent revise previous placements?)
+  - Progress steadiness (monotonic advance toward solution?)
+  - Error streak analysis (isolated mistakes vs. clustered confusion?)
+  - Reasoning overhead (wasted work relative to optimal path)
+  - Solver distance traces (remaining work after each valid move)
+  - Available in all paths: Gym env, eval harness, and server (telnet/WebSocket)
 - **Evaluation Harness** (`chuk-puzzles-eval`) - Built-in benchmarking CLI
   - Batch evaluation with configurable episodes
   - Multiple output formats (JSON, CSV, Markdown)
-  - Metrics: moves, invalid moves, hints, solve time
+  - Metrics: moves, invalid moves, hints, solve time, reasoning depth
   - Reproducible with deterministic seeds
 - **Dataset Export** (`chuk-puzzles-export`) - Synthetic data generation for LLM training
   - JSONL output with complete problem definitions and solutions
@@ -469,6 +476,7 @@ games = PuzzleEnv.available_games()
 
 - **All 30 games** accessible through unified API
 - **Configurable rewards** for correct moves, invalid attempts, completion bonuses
+- **Reasoning depth metrics** tracking backtracks, progress steadiness, error patterns
 - **Hint system** with optional budget limits
 - **Solver-free mode** for pure reasoning benchmarks
 - **Efficiency scoring** based on optimal step counts
@@ -484,8 +492,25 @@ obs = {
     "moves": 5,
     "invalid_moves": 1,
     "hints_used": 2,
+    "hints_remaining": 98,
     "is_complete": False,
-    "grid": [[4, 0, 8, ...], ...]  # Game-specific state
+    "grid": [[4, 0, 8, ...], ...],  # Game-specific state
+    "render": "  | 1 2 3 | ...",     # ASCII grid
+}
+
+# Info dict includes reasoning metrics and difficulty profile
+info = {
+    "optimal_steps": 45,
+    "difficulty_profile": {"logic_depth": 2, "branching_factor": 2.0, ...},
+    "reasoning_metrics": {
+        "backtrack_count": 0,
+        "backtrack_rate": 0.0,
+        "progress_velocity": 1.0,
+        "progress_steadiness": 1.0,
+        "reasoning_overhead": 1.0,
+        "error_streak_max": 0,
+        "solver_distance_trace": [44, 43, 42, ...],
+    },
 }
 ```
 
@@ -514,6 +539,89 @@ env = PuzzleEnv("sudoku", solver_config=config)
 config = SolverConfig(hint_budget=5, hint_penalty=0.1)
 env = PuzzleEnv("sudoku", solver_config=config)
 ```
+
+## Reasoning Depth Metrics
+
+Beyond binary success/failure, the system measures **how** an agent reasons through puzzles. These metrics are available in all interaction paths: the Gym environment, the evaluation harness, and the telnet/WebSocket server.
+
+### Metrics
+
+| Metric | Description | Perfect Score |
+|--------|-------------|---------------|
+| `backtrack_count` | Times the agent revised a previous placement | 0 |
+| `backtrack_rate` | Fraction of valid moves that were backtracks | 0% |
+| `progress_velocity` | Average cells solved per step | 1.0 |
+| `progress_steadiness` | How monotonically remaining work decreases (1.0 = never stalls) | 100% |
+| `reasoning_overhead` | Total actions / optimal path length (1.0 = no waste) | 1.0x |
+| `error_streak_max` | Longest run of consecutive invalid moves | 0 |
+| `avg_error_streak` | Average length of error bursts | 0.0 |
+| `solver_distance_trace` | Remaining positions after each valid move | Monotonically decreasing |
+
+### Usage in Gym Environment
+
+```python
+from chuk_puzzles_gym.gym_env import PuzzleEnv
+
+env = PuzzleEnv("sudoku", difficulty="easy", seed=42)
+obs, info = await env.reset()
+
+# Reasoning metrics available in info after reset
+print(info["reasoning_metrics"])
+
+# ... agent plays ...
+obs, reward, terminated, truncated, info = await env.step("place 1 1 5")
+
+# On episode end, info includes full reasoning metrics
+if terminated:
+    metrics = info["reasoning_metrics"]
+    print(f"Backtrack rate: {metrics['backtrack_rate']:.0%}")
+    print(f"Overhead: {metrics['reasoning_overhead']:.1f}x")
+    print(f"Steadiness: {metrics['progress_steadiness']:.0%}")
+```
+
+### Usage in Server (Telnet/WebSocket)
+
+Reasoning metrics are included automatically in server output:
+
+- **JSON mode**: `reasoning_metrics` dict in every state response and completion message
+- **STRICT mode**: `BT=`, `OH=`, `ST=` fields appended to STATS and COMPLETE messages
+- **Normal mode**: "Reasoning Depth" section shown on completion and in `stats` command
+
+```
+> mode json
+> place 1 1 5
+{"type":"result","success":true,...,"state":{...,"reasoning_metrics":{"backtrack_count":0,...}}}
+
+> stats
+{"type":"stats",...,"reasoning_metrics":{"backtrack_count":0,"backtrack_rate":0.0,...}}
+```
+
+### Usage in Evaluation Harness
+
+```bash
+# Reasoning metrics included in all output formats
+chuk-puzzles-eval sudoku -d easy -n 10 -o json
+```
+
+```python
+from chuk_puzzles_gym.eval import evaluate_game
+
+report = await evaluate_game("sudoku", difficulty="easy", episodes=10)
+report.print_summary()  # Includes "Reasoning Depth" section
+
+# Aggregate metrics
+print(f"Avg backtrack rate: {report.avg_backtrack_rate:.0%}")
+print(f"Avg overhead: {report.avg_reasoning_overhead:.1f}x")
+print(f"Avg steadiness: {report.avg_progress_steadiness:.0%}")
+```
+
+### What the Metrics Reveal
+
+A **perfect solver** shows: 0 backtracks, 1.0x overhead, 100% steadiness, 1.0 velocity.
+
+A **struggling agent** shows: high backtrack rate (revising decisions), error streaks (clustered confusion), low steadiness (stalling progress), and high overhead (wasted work).
+
+These patterns are visible even when two agents both eventually solve a puzzle — the metrics expose the **quality of the reasoning path**, not just the outcome.
 
 ## Evaluation Harness
 
@@ -573,6 +681,12 @@ Avg Time:   12ms
 | `hints_used` | Number of hints requested |
 | `wall_time_ms` | Time to solve in milliseconds |
 | `seed` | Puzzle seed for reproducibility |
+| `backtrack_count` | Times agent revised a previous placement |
+| `backtrack_rate` | Fraction of valid moves that were backtracks |
+| `progress_steadiness` | How monotonically progress advances (1.0 = perfect) |
+| `reasoning_overhead` | Total actions / optimal path (1.0 = no waste) |
+| `error_streak_max` | Longest run of consecutive invalid moves |
+| `progress_velocity` | Average cells solved per step |
 
 ## Dataset Export
 
@@ -1163,12 +1277,13 @@ chuk-puzzles-gym/
 │       │   ├── base.py           # GridPosition, MoveResult
 │       │   ├── config.py         # Base GameConfig
 │       │   ├── enums.py          # DifficultyLevel, GameCommand, etc.
+│       │   ├── evaluation.py     # ReasoningMetrics, EpisodeResult, EvaluationSummary
 │       │   └── games.py          # Game-specific models (Cage, Task, etc.)
 │       └── games/                # Self-contained game modules
 │           ├── __init__.py       # AVAILABLE_GAMES registry
 │           ├── _base/            # Base classes
 │           │   ├── __init__.py
-│           │   ├── game.py       # PuzzleGame ABC
+│           │   ├── game.py       # PuzzleGame ABC + ReasoningTracker
 │           │   └── commands.py   # GameCommandHandler ABC
 │           ├── sudoku/           # Example game module
 │           │   ├── __init__.py   # Exports SudokuGame
@@ -1195,6 +1310,7 @@ chuk-puzzles-gym/
 │   ├── example_graph_coloring.py # Graph Coloring game logic demo
 │   ├── example_cryptarithmetic.py# Cryptarithmetic game logic demo
 │   ├── example_rush_hour.py      # Rush Hour game logic demo
+│   ├── example_reasoning_metrics.py # Reasoning depth metrics demo
 │   └── README.md                 # Example usage guide
 ├── .github/workflows/            # CI/CD workflows
 ├── pyproject.toml                # Modern Python project config
@@ -1434,9 +1550,10 @@ See [ROADMAP.md](ROADMAP.md) for the full development roadmap.
 ### Highlights
 
 **Benchmarking & Metrics**
-- Puzzle complexity metrics (constraint count, variable count, branching factor)
-- Episode model for tracking game sessions
-- Trace logging for offline analysis
+- ~~Puzzle complexity metrics~~ (implemented: constraint count, variable count, branching factor)
+- ~~Episode model for tracking game sessions~~ (implemented: EpisodeResult with ReasoningMetrics)
+- ~~Reasoning depth metrics~~ (implemented: backtrack detection, progress steadiness, error patterns)
+- ~~Trace logging for offline analysis~~ (implemented: solver distance traces in all output paths)
 
 **Agent Evaluation Tools**
 - Batch evaluation harness CLI

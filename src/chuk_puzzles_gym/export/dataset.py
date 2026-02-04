@@ -190,6 +190,12 @@ class DatasetExporter:
             if canonical:
                 gold_answer = str(canonical)
 
+        # Build reasoning tags from complexity profile
+        complexity_profile = game.complexity_profile
+        reasoning_type = complexity_profile.get("reasoning_type", "deductive")
+        search_space = complexity_profile.get("search_space", "medium")
+        tags = [domain, difficulty.value, f"reasoning:{reasoning_type}", f"search:{search_space}"]
+
         # Create Problem using core schema
         return Problem(
             # Identity
@@ -214,7 +220,7 @@ class DatasetExporter:
             ),
             # Metadata
             operation_count=game.optimal_steps,
-            tags=[domain, difficulty.value],
+            tags=tags,
         )
 
     @property

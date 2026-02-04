@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "chuk-puzzles-gym"
-version = "0.10.1"
+version = "0.10.2"
 description = "Multi-game puzzle gym for LLM training and benchmarking - 30 constraint puzzles with synthetic data generation"
 readme = "README.md"
 requires-python = ">=3.11"

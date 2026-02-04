@@ -63,6 +63,9 @@ class ArcadeHandler(TelnetHandler):
         if not self.current_game:
             return
 
+        # Get final reasoning metrics
+        reasoning = self.current_game.get_reasoning_metrics().to_dict()
+
         if self.output_mode == OutputMode.JSON:
             await self.send_json_response(
                 type="complete",
@@ -72,17 +75,27 @@ class ArcadeHandler(TelnetHandler):
                 invalid_moves=self.current_game.invalid_moves,
                 hints_used=self.current_game.hints_used,
                 optimal_steps=self.current_game.optimal_steps,
+                reasoning_metrics=reasoning,
             )
         elif self.output_mode == OutputMode.STRICT:
             await self.send_line(
                 f"COMPLETE:{self.current_game.moves_made}:{self.current_game.invalid_moves}:"
-                f"{self.current_game.hints_used}"
+                f"{self.current_game.hints_used}:"
+                f"BT={reasoning['backtrack_count']}:"
+                f"OH={reasoning['reasoning_overhead']:.2f}:"
+                f"ST={reasoning['progress_steadiness']:.2f}"
             )
         else:
             await self.send_line("\n" + "=" * 50)
             await self.send_line("CONGRATULATIONS! YOU SOLVED IT!")
             await self.send_line("=" * 50)
             await self.send_line(self.current_game.get_stats())
+            await self.send_line("")
+            await self.send_line("Reasoning Depth:")
+            await self.send_line(f"  Backtrack rate:      {reasoning['backtrack_rate']:.0%}")
+            await self.send_line(f"  Progress steadiness: {reasoning['progress_steadiness']:.0%}")
+            await self.send_line(f"  Reasoning overhead:  {reasoning['reasoning_overhead']:.1f}x optimal")
+            await self.send_line(f"  Error streak max:    {reasoning['error_streak_max']}")
             await self.send_line("\nType 'menu' to play another game.")
             await self.send_line("=" * 50 + "\n")
 
@@ -109,6 +122,9 @@ class ArcadeHandler(TelnetHandler):
             "constraint_density": profile.constraint_density,
         }
 
+        # Reasoning depth metrics
+        reasoning = self.current_game.get_reasoning_metrics().to_dict()
+
         return {
             "game": self.current_game.name,
             "difficulty": self.current_game.difficulty.value,
@@ -120,6 +136,7 @@ class ArcadeHandler(TelnetHandler):
             "optimal_steps": self.current_game.optimal_steps,
             "is_complete": self.current_game.is_complete(),
             "difficulty_profile": profile_dict,
+            "reasoning_metrics": reasoning,
             "grid": grid,
         }
 
@@ -435,9 +452,10 @@ class ArcadeHandler(TelnetHandler):
             return
 
         if cmd_enum == GameCommand.STATS:
-            # Show detailed stats including difficulty profile
+            # Show detailed stats including difficulty profile and reasoning metrics
             profile = self.current_game.difficulty_profile
             optimal = self.current_game.optimal_steps
+            reasoning = self.current_game.get_reasoning_metrics().to_dict()
 
             if self.output_mode == OutputMode.JSON:
                 await self.send_json_response(
@@ -455,11 +473,15 @@ class ArcadeHandler(TelnetHandler):
                         "state_observability": profile.state_observability,
                         "constraint_density": profile.constraint_density,
                     },
+                    reasoning_metrics=reasoning,
                 )
             elif self.output_mode == OutputMode.STRICT:
                 await self.send_line(
                     f"STATS:{self.current_game.moves_made}:{self.current_game.invalid_moves}:"
-                    f"{self.current_game.hints_used}:{optimal or 0}"
+                    f"{self.current_game.hints_used}:{optimal or 0}:"
+                    f"BT={reasoning['backtrack_count']}:"
+                    f"OH={reasoning['reasoning_overhead']:.2f}:"
+                    f"ST={reasoning['progress_steadiness']:.2f}"
                 )
             else:
                 await self.send_line("")
@@ -481,6 +503,15 @@ class ArcadeHandler(TelnetHandler):
                     )
                     await self.send_line(f"  Optimal steps: {optimal}")
                     await self.send_line(f"  Current efficiency: {efficiency:.1%}")
+                await self.send_line("")
+                await self.send_line("Reasoning Depth:")
+                await self.send_line(f"  Backtrack count:     {reasoning['backtrack_count']}")
+                await self.send_line(f"  Backtrack rate:      {reasoning['backtrack_rate']:.0%}")
+                await self.send_line(f"  Progress velocity:   {reasoning['progress_velocity']:.2f} cells/step")
+                await self.send_line(f"  Progress steadiness: {reasoning['progress_steadiness']:.0%}")
+                await self.send_line(f"  Reasoning overhead:  {reasoning['reasoning_overhead']:.1f}x optimal")
+                await self.send_line(f"  Error streak max:    {reasoning['error_streak_max']}")
+                await self.send_line(f"  Total actions:       {reasoning['total_actions']}")
                 await self.send_line("")
                 await self.send_line("Difficulty Profile:")
                 await self.send_line(f"  Logic depth: {profile.logic_depth}")

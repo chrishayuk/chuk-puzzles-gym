@@ -25,7 +25,7 @@ import sys
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     pass
@@ -100,8 +100,36 @@ class EvaluationReport:
             return 0.0
         return sum(e.hints_used for e in self.episodes) / self.total_episodes
 
+    @property
+    def avg_backtrack_rate(self) -> float:
+        """Average backtrack rate across episodes with reasoning metrics."""
+        with_metrics = [e for e in self.episodes if e.reasoning_metrics is not None]
+        if not with_metrics:
+            return 0.0
+        return sum(e.reasoning_metrics.backtrack_rate for e in with_metrics) / len(with_metrics)  # type: ignore[union-attr]
+
+    @property
+    def avg_reasoning_overhead(self) -> float:
+        """Average reasoning overhead across episodes with reasoning metrics."""
+        with_metrics = [
+            e for e in self.episodes if e.reasoning_metrics is not None and e.reasoning_metrics.reasoning_overhead > 0
+        ]
+        if not with_metrics:
+            return 0.0
+        return sum(e.reasoning_metrics.reasoning_overhead for e in with_metrics) / len(with_metrics)  # type: ignore[union-attr]
+
+    @property
+    def avg_progress_steadiness(self) -> float:
+        """Average progress steadiness across episodes with reasoning metrics."""
+        with_metrics = [e for e in self.episodes if e.reasoning_metrics is not None]
+        if not with_metrics:
+            return 0.0
+        return sum(e.reasoning_metrics.progress_steadiness for e in with_metrics) / len(with_metrics)  # type: ignore[union-attr]
+
     def to_markdown(self) -> str:
         """Generate markdown report."""
+        has_reasoning = any(e.reasoning_metrics is not None for e in self.episodes)
+
         lines = [
             f"# {self.game.title()} {self.difficulty.title()} Evaluation",
             "",
@@ -112,24 +140,78 @@ class EvaluationReport:
             f"**Avg Hints:** {self.avg_hints:.1f}",
             f"**Avg Efficiency:** {self.avg_efficiency:.1%}",
             f"**Avg Time:** {self.avg_time_ms:.0f}ms",
-            "",
-            f"**Solver Config:** {'solver-free' if not self.solver_config.solver_allowed else f'budget={self.solver_config.hint_budget}, penalty={self.solver_config.hint_penalty}'}",
-            "",
-            "## Episode Details",
-            "",
-            "| Seed | Status | Steps | Invalid | Hints | Efficiency | Time (ms) |",
-            "|------|--------|-------|---------|-------|------------|-----------|",
         ]
-        for e in self.episodes:
-            status = "solved" if e.success else e.status.value
-            eff = f"{e.efficiency_score:.0%}" if e.success else "-"
-            lines.append(
-                f"| {e.seed} | {status} | {e.steps_taken} | {e.invalid_actions} | {e.hints_used} | {eff} | {e.wall_time_ms} |"
+
+        if has_reasoning:
+            lines.extend(
+                [
+                    "",
+                    "### Reasoning Depth",
+                    f"**Avg Backtrack Rate:** {self.avg_backtrack_rate:.1%}",
+                    f"**Avg Reasoning Overhead:** {self.avg_reasoning_overhead:.2f}x",
+                    f"**Avg Progress Steadiness:** {self.avg_progress_steadiness:.1%}",
+                ]
             )
+
+        lines.extend(
+            [
+                "",
+                f"**Solver Config:** {'solver-free' if not self.solver_config.solver_allowed else f'budget={self.solver_config.hint_budget}, penalty={self.solver_config.hint_penalty}'}",
+                "",
+                "## Episode Details",
+                "",
+            ]
+        )
+
+        if has_reasoning:
+            lines.append(
+                "| Seed | Status | Steps | Invalid | Hints | Efficiency | Backtracks | Steadiness | Time (ms) |"
+            )
+            lines.append(
+                "|------|--------|-------|---------|-------|------------|------------|------------|-----------|"
+            )
+            for e in self.episodes:
+                status = "solved" if e.success else e.status.value
+                eff = f"{e.efficiency_score:.0%}" if e.success else "-"
+                bt = str(e.reasoning_metrics.backtrack_count) if e.reasoning_metrics else "-"
+                st = f"{e.reasoning_metrics.progress_steadiness:.0%}" if e.reasoning_metrics else "-"
+                lines.append(
+                    f"| {e.seed} | {status} | {e.steps_taken} | {e.invalid_actions} | {e.hints_used} | {eff} | {bt} | {st} | {e.wall_time_ms} |"
+                )
+        else:
+            lines.append("| Seed | Status | Steps | Invalid | Hints | Efficiency | Time (ms) |")
+            lines.append("|------|--------|-------|---------|-------|------------|-----------|")
+            for e in self.episodes:
+                status = "solved" if e.success else e.status.value
+                eff = f"{e.efficiency_score:.0%}" if e.success else "-"
+                lines.append(
+                    f"| {e.seed} | {status} | {e.steps_taken} | {e.invalid_actions} | {e.hints_used} | {eff} | {e.wall_time_ms} |"
+                )
+
         return "\n".join(lines)
 
     def to_json(self) -> str:
         """Generate JSON report."""
+        summary: dict[str, Any] = {
+            "total_episodes": self.total_episodes,
+            "solved_count": self.solved_count,
+            "solve_rate": self.solve_rate,
+            "avg_steps": self.avg_moves,
+            "avg_invalid": self.avg_invalid_moves,
+            "avg_hints": self.avg_hints,
+            "avg_efficiency": self.avg_efficiency,
+            "avg_time_ms": self.avg_time_ms,
+        }
+
+        # Add aggregate reasoning metrics if available
+        has_reasoning = any(e.reasoning_metrics is not None for e in self.episodes)
+        if has_reasoning:
+            summary["reasoning"] = {
+                "avg_backtrack_rate": round(self.avg_backtrack_rate, 3),
+                "avg_reasoning_overhead": round(self.avg_reasoning_overhead, 3),
+                "avg_progress_steadiness": round(self.avg_progress_steadiness, 3),
+            }
+
         return json.dumps(
             {
                 "game": self.game,
@@ -139,16 +221,7 @@ class EvaluationReport:
                     "hint_budget": self.solver_config.hint_budget,
                     "hint_penalty": self.solver_config.hint_penalty,
                 },
-                "summary": {
-                    "total_episodes": self.total_episodes,
-                    "solved_count": self.solved_count,
-                    "solve_rate": self.solve_rate,
-                    "avg_steps": self.avg_moves,
-                    "avg_invalid": self.avg_invalid_moves,
-                    "avg_hints": self.avg_hints,
-                    "avg_efficiency": self.avg_efficiency,
-                    "avg_time_ms": self.avg_time_ms,
-                },
+                "summary": summary,
                 "episodes": [e.to_summary_dict() for e in self.episodes],
             },
             indent=2,
@@ -158,35 +231,61 @@ class EvaluationReport:
         """Generate CSV report."""
         import io
 
+        has_reasoning = any(e.reasoning_metrics is not None for e in self.episodes)
+
         output = io.StringIO()
         writer = csv.writer(output)
-        writer.writerow(
-            [
-                "game",
-                "difficulty",
-                "seed",
-                "status",
-                "steps_taken",
-                "invalid_actions",
-                "hints_used",
-                "efficiency",
-                "wall_time_ms",
-            ]
-        )
-        for e in self.episodes:
-            writer.writerow(
+
+        header = [
+            "game",
+            "difficulty",
+            "seed",
+            "status",
+            "steps_taken",
+            "invalid_actions",
+            "hints_used",
+            "efficiency",
+            "wall_time_ms",
+        ]
+        if has_reasoning:
+            header.extend(
                 [
-                    e.game,
-                    e.difficulty.value,
-                    e.seed,
-                    e.status.value,
-                    e.steps_taken,
-                    e.invalid_actions,
-                    e.hints_used,
-                    f"{e.efficiency_score:.3f}",
-                    e.wall_time_ms,
+                    "backtrack_count",
+                    "backtrack_rate",
+                    "reasoning_overhead",
+                    "progress_steadiness",
+                    "error_streak_max",
                 ]
             )
+        writer.writerow(header)
+
+        for e in self.episodes:
+            row = [
+                e.game,
+                e.difficulty.value,
+                e.seed,
+                e.status.value,
+                e.steps_taken,
+                e.invalid_actions,
+                e.hints_used,
+                f"{e.efficiency_score:.3f}",
+                e.wall_time_ms,
+            ]
+            if has_reasoning:
+                rm = e.reasoning_metrics
+                if rm is not None:
+                    row.extend(
+                        [
+                            rm.backtrack_count,
+                            f"{rm.backtrack_rate:.3f}",
+                            f"{rm.reasoning_overhead:.3f}",
+                            f"{rm.progress_steadiness:.3f}",
+                            rm.error_streak_max,
+                        ]
+                    )
+                else:
+                    row.extend(["", "", "", "", ""])
+            writer.writerow(row)
         return output.getvalue()
 
     def print_summary(self) -> None:
@@ -205,6 +304,15 @@ class EvaluationReport:
         print(f"Avg Hints:  {self.avg_hints:.1f}")
         print(f"Avg Efficiency: {self.avg_efficiency:.1%}")
         print(f"Avg Time:   {self.avg_time_ms:.0f}ms")
+
+        # Reasoning depth metrics
+        has_reasoning = any(e.reasoning_metrics is not None for e in self.episodes)
+        if has_reasoning:
+            print("-" * 40)
+            print("Reasoning Depth:")
+            print(f"  Backtrack Rate:      {self.avg_backtrack_rate:.1%}")
+            print(f"  Reasoning Overhead:  {self.avg_reasoning_overhead:.2f}x")
+            print(f"  Progress Steadiness: {self.avg_progress_steadiness:.1%}")
 
 
 async def _apply_hint(game: PuzzleGame, hint_data: tuple) -> MoveResult:
@@ -433,15 +541,22 @@ async def run_episode(
             # Apply the hint based on game type
             try:
                 result = await _apply_hint(game, hint_data)
+                # Normalize hint_data to a tuple for position tracking
+                position = hint_data if isinstance(hint_data, tuple) else (hint_data,)
                 if result.success:
                     steps_taken += 1
+                    # Use game's dynamic optimal_steps (reflects current state)
+                    remaining = game.optimal_steps or 0
+                    game.reasoning_tracker.record_valid_move(position, remaining)
                 else:
                     invalid_actions += 1
+                    game.reasoning_tracker.record_invalid_move()
                     # If we get too many consecutive invalid moves, break
                     if invalid_actions > 50:
                         break
             except (TypeError, ValueError, AttributeError, IndexError):
                 invalid_actions += 1
+                game.reasoning_tracker.record_invalid_move()
                 if invalid_actions > 50:
                     break
         elif not use_hints:
@@ -461,6 +576,12 @@ async def run_episode(
     # Get retries from game if tracked
     retries = getattr(game, "retries", 0)
 
+    # Collect reasoning depth metrics (use pre-solve optimal_steps since
+    # the game's optimal_steps may be 0 after solving)
+    reasoning_metrics = game.reasoning_tracker.to_metrics(
+        optimal_path_length=optimal_steps if optimal_steps and optimal_steps >= 1 else None,
+    )
+
     return EpisodeResult(
         game=game.name,
         difficulty=DifficultyLevel(difficulty),
@@ -475,6 +596,7 @@ async def run_episode(
         retries=retries,
         optimal_steps=optimal_steps,
         solver_config=solver_config,
+        reasoning_metrics=reasoning_metrics,
     )
 
 

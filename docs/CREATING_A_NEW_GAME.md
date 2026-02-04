@@ -208,16 +208,18 @@ self._rng.shuffle(items)
 value = random.randint(1, 10)
 ```
 
-**Metrics tracking** -- Call `record_move()` in every `validate_move()` path:
+**Metrics tracking** -- Call `record_move()` in every `validate_move()` path. This feeds both the basic counters (`moves_made`, `invalid_moves`) and the reasoning depth tracker (backtrack detection, solver distance, error streaks):
 
 ```python
 async def validate_move(self, node: int, color: int) -> MoveResult:
     if not valid:
-        self.record_move((node,), False)   # Records invalid_moves
+        self.record_move((node,), False)   # Records invalid_moves + error streak
         return MoveResult(success=False, message="...")
-    self.record_move((node,), True)        # Records moves_made
+    self.record_move((node,), True)        # Records moves_made + solver distance
     return MoveResult(success=True, message="...", state_changed=True)
 ```
+
+The reasoning tracker automatically detects backtracks (placing at a previously-placed position), tracks solver distance (via `optimal_steps`), and records error streak patterns. No additional code needed in your game -- just call `record_move()` consistently.
 
 **Hint budget** -- Use `can_use_hint()` to check and `record_hint()` to consume:
 
@@ -654,10 +656,12 @@ From `PuzzleGame` (inherited by your game):
 | `self.difficulty` | `DifficultyLevel` enum |
 | `self.solver_config` | `SolverConfig` with hint budget settings |
 | `self.game_started` | Set to `True` at end of `generate_puzzle()` |
-| `record_move(position, success)` | Track move metrics (call from `validate_move`) |
+| `record_move(position, success)` | Track move metrics and feed reasoning tracker (call from `validate_move`) |
 | `record_hint()` | Consume a hint from the budget; returns `bool` |
 | `can_use_hint()` | Check if hints remain without consuming one |
 | `hints_remaining` | Number of hints left in budget |
+| `reasoning_tracker` | `ReasoningTracker` instance -- tracks backtracks, error streaks, solver distance |
+| `get_reasoning_metrics()` | Returns `ReasoningMetrics` snapshot (backtrack rate, progress steadiness, etc.) |
 | `get_stats()` | Default stats string (override for custom stats) |
 | `get_solution_efficiency(steps)` | Calculate efficiency vs optimal |
 

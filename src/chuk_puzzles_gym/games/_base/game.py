@@ -1,10 +1,99 @@
 """Abstract base class for all puzzle games."""
 
+from __future__ import annotations
+
 import random
 from abc import ABC, abstractmethod
 from typing import Any
 
 from ...models import DifficultyLevel, DifficultyProfile, MoveResult, SolverConfig
+from ...models.evaluation import ReasoningMetrics
+
+
+class ReasoningTracker:
+    """Tracks reasoning depth metrics during puzzle gameplay.
+
+    Accumulates data about backtrack behavior, solver distance progression,
+    and error patterns. Produces a ReasoningMetrics snapshot on demand.
+
+    This is a lightweight, non-Pydantic class meant to be mutated during play.
+    """
+
+    __slots__ = (
+        "_placed_positions",
+        "_solver_distance_trace",
+        "_backtrack_count",
+        "_consecutive_errors",
+        "_error_streaks",
+        "_max_error_streak",
+        "_total_actions",
+    )
+
+    def __init__(self) -> None:
+        self._placed_positions: set[tuple[Any, ...]] = set()
+        self._solver_distance_trace: list[int] = []
+        self._backtrack_count: int = 0
+        self._consecutive_errors: int = 0
+        self._error_streaks: list[int] = []
+        self._max_error_streak: int = 0
+        self._total_actions: int = 0
+
+    def record_valid_move(self, position: tuple[Any, ...], remaining_count: int) -> None:
+        """Record a valid (successful) move.
+
+        Args:
+            position: The position/target of the move (for backtrack detection)
+            remaining_count: How many positions remain to be filled after this move
+        """
+        self._total_actions += 1
+
+        # Detect backtrack: placing at a position already placed before
+        if position in self._placed_positions:
+            self._backtrack_count += 1
+        self._placed_positions.add(position)
+
+        self._solver_distance_trace.append(remaining_count)
+
+        # Finalize any pending error streak
+        if self._consecutive_errors > 0:
+            self._error_streaks.append(self._consecutive_errors)
+            self._consecutive_errors = 0
+
+    def record_invalid_move(self) -> None:
+        """Record an invalid (failed) move."""
+        self._total_actions += 1
+        self._consecutive_errors += 1
+        self._max_error_streak = max(self._max_error_streak, self._consecutive_errors)
+
+    def to_metrics(self, optimal_path_length: int | None = None) -> ReasoningMetrics:
+        """Produce a frozen ReasoningMetrics snapshot.
+
+        Args:
+            optimal_path_length: Minimum steps to solve (from solver), if known.
+        """
+        # Finalize any pending error streak
+        error_streaks = list(self._error_streaks)
+        if self._consecutive_errors > 0:
+            error_streaks.append(self._consecutive_errors)
+
+        return ReasoningMetrics(
+            backtrack_count=self._backtrack_count,
+            solver_distance_trace=list(self._solver_distance_trace),
+            error_streak_max=self._max_error_streak,
+            error_streaks=error_streaks,
+            total_actions=self._total_actions,
+            optimal_path_length=optimal_path_length,
+        )
+
+    def reset(self) -> None:
+        """Reset all tracked state."""
+        self._placed_positions.clear()
+        self._solver_distance_trace.clear()
+        self._backtrack_count = 0
+        self._consecutive_errors = 0
+        self._error_streaks.clear()
+        self._max_error_streak = 0
+        self._total_actions = 0
 
 
 class PuzzleGame(ABC):
@@ -63,6 +152,9 @@ class PuzzleGame(ABC):
         # State tracking
         self.game_started = False
         self._last_move_position: tuple[Any, ...] | None = None  # For retry detection
+
+        # Reasoning depth tracker
+        self._reasoning_tracker = ReasoningTracker()
 
     @abstractmethod
     async def generate_puzzle(self) -> None:
@@ -162,8 +254,11 @@ class PuzzleGame(ABC):
         """
         if success:
             self.moves_made += 1
+            remaining = self._compute_remaining()
+            self._reasoning_tracker.record_valid_move(position, remaining)
         else:
             self.invalid_moves += 1
+            self._reasoning_tracker.record_invalid_move()
 
         # Detect retries (same position attempted again)
         if self._last_move_position == position:
@@ -182,6 +277,34 @@ class PuzzleGame(ABC):
             return False
         self.hints_used += 1
         return True
+
+    def _compute_remaining(self) -> int:
+        """Compute how many positions remain to be filled.
+
+        Uses optimal_steps directly since it is typically dynamic
+        (reflects current game state, e.g. counting empty cells).
+        Override in subclasses for more accurate tracking.
+        """
+        return self.optimal_steps or 0
+
+    def get_reasoning_metrics(self) -> ReasoningMetrics:
+        """Get a snapshot of reasoning depth metrics for the current episode.
+
+        Returns:
+            Frozen ReasoningMetrics with all tracked data.
+        """
+        optimal = self.optimal_steps
+        # optimal_path_length requires ge=1; treat 0 or negative as unknown
+        if optimal is not None and optimal < 1:
+            optimal = None
+        return self._reasoning_tracker.to_metrics(
+            optimal_path_length=optimal,
+        )
+
+    @property
+    def reasoning_tracker(self) -> ReasoningTracker:
+        """Access the reasoning tracker directly."""
+        return self._reasoning_tracker
 
     def can_use_hint(self) -> bool:
         """Check if hints are available without consuming one.

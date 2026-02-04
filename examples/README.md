@@ -82,7 +82,7 @@ make example-ws-interactive  # Interactive mode
 
 ## Available Games
 
-The Puzzle Arcade Server offers **24 different puzzle types** across 5 categories:
+The Puzzle Arcade Server offers **30 different puzzle types** across 6 categories:
 
 ### Classic Logic Puzzles
 1. **Sudoku** - Classic 9x9 number placement puzzle
@@ -254,6 +254,30 @@ async def play_puzzle():
 
 asyncio.run(play_puzzle())
 ```
+
+### 3. Reasoning Depth Metrics Demo (`example_reasoning_metrics.py`)
+
+Demonstrates the reasoning depth metrics system that measures *how* an agent reasons, not just whether it solves a puzzle.
+
+**Usage:**
+
+```bash
+python examples/example_reasoning_metrics.py
+```
+
+**Scenarios demonstrated:**
+
+1. **Perfect solver** (hint-based) — Baseline metrics showing 0 backtracks, 1.0x overhead, 100% steadiness
+2. **Simulated imperfect agent** via Gym env — Mixed valid/invalid moves showing error streaks and overhead
+3. **Multi-game comparison** — Cross-puzzle reasoning profile across 6 different games
+4. **Evaluation harness** — Aggregate reasoning metrics with all output formats (JSON, CSV, text)
+
+**Metrics tracked:**
+- `backtrack_count` / `backtrack_rate` — How often the agent revises previous decisions
+- `progress_velocity` / `progress_steadiness` — How steadily the agent advances toward a solution
+- `reasoning_overhead` — Total actions relative to optimal path length
+- `error_streak_max` / `avg_error_streak` — Error pattern analysis
+- `solver_distance_trace` — Remaining work curve after each valid move
 
 ## Evaluation Harness
 

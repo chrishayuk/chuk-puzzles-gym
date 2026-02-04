@@ -197,6 +197,7 @@ class PuzzleEnv:
             result = await self._execute_action(cmd, args)
         except Exception as e:
             self._game.invalid_moves += 1
+            self._game.reasoning_tracker.record_invalid_move()
             return (
                 self._get_observation(),
                 self.reward_config["invalid_attempt"],
@@ -207,17 +208,25 @@ class PuzzleEnv:
 
         self._step_count += 1
 
+        # Build position tuple from parsed args for reasoning tracker
+        position = tuple(args)
+
         # Calculate reward
         if result.success:
             reward = self.reward_config["correct_placement"]
+
+            # Feed reasoning tracker
+            # optimal_steps is dynamic (reflects current state), so use it directly
+            remaining = self._game.optimal_steps or 0
+            self._game.reasoning_tracker.record_valid_move(position, remaining)
 
             # Check for completion
             terminated = self._game.is_complete()
             if terminated:
                 # Add completion bonus with efficiency multiplier
-                optimal = self._game.optimal_steps
-                if optimal and self._game.moves_made > 0:
-                    efficiency = min(1.0, optimal / self._game.moves_made)
+                opt = self._game.optimal_steps
+                if opt and self._game.moves_made > 0:
+                    efficiency = min(1.0, opt / self._game.moves_made)
                 else:
                     efficiency = 1.0
                 reward += (
@@ -226,11 +235,12 @@ class PuzzleEnv:
         else:
             reward = self.reward_config["invalid_attempt"]
             self._game.invalid_moves += 1
+            self._game.reasoning_tracker.record_invalid_move()
             terminated = False
 
         truncated = self._step_count >= self.max_steps
 
-        info = {
+        info: dict[str, Any] = {
             "action": action_str,
             "success": result.success,
             "message": result.message,
@@ -238,6 +248,10 @@ class PuzzleEnv:
             "invalid_moves": self._game.invalid_moves,
             "hints_used": self._game.hints_used,
         }
+
+        # Include reasoning metrics on episode end
+        if terminated or truncated:
+            info["reasoning_metrics"] = self._game.get_reasoning_metrics().to_dict()
 
         return self._get_observation(), reward, terminated, truncated, info
 
@@ -371,7 +385,7 @@ class PuzzleEnv:
         if self._game is None:
             return {"error": "no_game"}
 
-        obs = {
+        obs: dict[str, Any] = {
             "game": self._game.name,
             "difficulty": self._game.difficulty.value,
             "seed": self._game.seed,
@@ -397,6 +411,7 @@ class PuzzleEnv:
             return {}
 
         profile = self._game.difficulty_profile
+        reasoning = self._game.get_reasoning_metrics()
         return {
             "optimal_steps": self._game.optimal_steps,
             "difficulty_profile": {
@@ -411,6 +426,7 @@ class PuzzleEnv:
                 "hint_budget": self.solver_config.hint_budget,
                 "hint_penalty": self.solver_config.hint_penalty,
             },
+            "reasoning_metrics": reasoning.to_dict(),
         }
 
     def render(self, mode: str = "ansi") -> str | None:
