@@ -529,6 +529,31 @@ eval-json:
 		PYTHONPATH=$(SRC_DIR) $(PYTHON) -m puzzle_arcade_server.eval --all -d easy -n 5 -o json; \
 	fi
 
+# CHUK-R Benchmark
+benchmark:
+	@echo "Running CHUK-R benchmark (easy, 5 episodes/game)..."
+	@if command -v uv >/dev/null 2>&1; then \
+		PYTHONPATH=$(SRC_DIR) uv run chuk-puzzles-benchmark -d easy -n 5 -v; \
+	else \
+		PYTHONPATH=$(SRC_DIR) $(PYTHON) -m chuk_puzzles_gym.benchmark.cli -d easy -n 5 -v; \
+	fi
+
+benchmark-full:
+	@echo "Running full CHUK-R benchmark (medium, 10 episodes/game)..."
+	@if command -v uv >/dev/null 2>&1; then \
+		PYTHONPATH=$(SRC_DIR) uv run chuk-puzzles-benchmark -d medium -n 10 -v; \
+	else \
+		PYTHONPATH=$(SRC_DIR) $(PYTHON) -m chuk_puzzles_gym.benchmark.cli -d medium -n 10 -v; \
+	fi
+
+benchmark-json:
+	@echo "Running CHUK-R benchmark (JSON output)..."
+	@if command -v uv >/dev/null 2>&1; then \
+		PYTHONPATH=$(SRC_DIR) uv run chuk-puzzles-benchmark -d easy -n 5 -o json; \
+	else \
+		PYTHONPATH=$(SRC_DIR) $(PYTHON) -m chuk_puzzles_gym.benchmark.cli -d easy -n 5 -o json; \
+	fi
+
 list-games:
 	@echo "Available games:"
 	@if command -v uv >/dev/null 2>&1; then \

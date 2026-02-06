@@ -46,6 +46,7 @@ dev = [
 chuk-puzzles-server = "chuk_puzzles_gym.server:run_server"
 chuk-puzzles-eval = "chuk_puzzles_gym.eval:main"
 chuk-puzzles-export = "chuk_puzzles_gym.export.dataset:main"
+chuk-puzzles-benchmark = "chuk_puzzles_gym.benchmark.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/chrishayuk/chuk-puzzles-gym"

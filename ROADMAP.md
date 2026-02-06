@@ -95,6 +95,32 @@ Each tagged with:
 chuk-puzzles-eval -g sudoku -n 100 -o json > baseline.json
 ```
 
+### ✅ CHUK-R Aggregate Benchmark
+
+Single aggregate reasoning score (0-100) across all 30 games organized into 4 reasoning families:
+
+| Family | Games | Focus |
+|--------|-------|-------|
+| **Logic** | 10 | Pure deduction, uniqueness, patterns |
+| **Constraint** | 12 | Multi-constraint interaction, sums, connectivity |
+| **Search** | 4 | Feedback-driven, iterative, path-finding |
+| **Planning** | 4 | Sequential actions, irreversible decisions |
+
+Scoring formula per episode:
+- Efficiency (40%): optimal_steps / steps_taken
+- Error rate (15%): 1 - invalid / total
+- Backtrack (15%): 1 - backtrack_rate
+- Steadiness (15%): progress_steadiness
+- Hint independence (15%): 1 - hint_dependency
+
+Aggregation: episode → game (mean) → family (mean) → CHUK-R (mean)
+
+```bash
+chuk-puzzles-benchmark -d easy -n 5 -v          # Full benchmark
+chuk-puzzles-benchmark --family Logic -n 10     # Single family
+chuk-puzzles-benchmark -o json                  # JSON output
+```
+
 ---
 
 ## Phase 3 — RL Loop First-Class
@@ -174,7 +200,9 @@ Track:
 - Heuristic agents
 - RL-trained agents
 
-Focus on **reasoning quality** (backtrack rate, progress steadiness, reasoning overhead), not just accuracy.
+Primary metric: **CHUK-R score** (0-100) with per-family breakdown (Logic, Constraint, Search, Planning).
+
+Secondary metrics: backtrack rate, progress steadiness, reasoning overhead.
 
 ---
 
@@ -205,7 +233,7 @@ Use own results to demonstrate.
 | Phase | Focus | Status |
 |-------|-------|--------|
 | 1 | Lock core | ✅ Complete |
-| 2 | Datasets | ✅ Mostly complete (cold-start packs TODO) |
+| 2 | Datasets | ✅ Complete (CHUK-R benchmark added, cold-start packs TODO) |
 | 3 | RL loop | ✅ Env done, training loop TODO |
 | 4 | Ecosystem | ⏳ Not started |
 | 5 | Splash | ⏳ Not started |

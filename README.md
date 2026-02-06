@@ -33,6 +33,9 @@ uvx --from chuk-puzzles-gym chuk-puzzles-export -g sudoku -n 100 -o data.jsonl
 
 # Benchmark an agent
 uvx --from chuk-puzzles-gym chuk-puzzles-eval -g sudoku -n 10
+
+# Run CHUK-R aggregate benchmark
+uvx --from chuk-puzzles-gym chuk-puzzles-benchmark -d easy -n 5
 ```
 
 ### Connect to Live Demo
@@ -74,6 +77,11 @@ Once connected, type `help` to see available games, or `sudoku easy` to start pl
   - Multiple output formats (JSON, CSV, Markdown)
   - Metrics: moves, invalid moves, hints, solve time, reasoning depth
   - Reproducible with deterministic seeds
+- **CHUK-R Benchmark** (`chuk-puzzles-benchmark`) - Aggregate reasoning score
+  - Single 0-100 score across all 30 games
+  - 4 reasoning families: Logic, Constraint, Search, Planning
+  - Weighted scoring: efficiency, errors, backtracks, steadiness, hint independence
+  - LLM agent testing with OpenAI models (gpt-4o-mini, gpt-4o)
 - **Dataset Export** (`chuk-puzzles-export`) - Synthetic data generation for LLM training
   - JSONL output with complete problem definitions and solutions
   - Step-by-step reasoning traces for teacher-forcing
@@ -687,6 +695,96 @@ Avg Time:   12ms
 | `reasoning_overhead` | Total actions / optimal path (1.0 = no waste) |
 | `error_streak_max` | Longest run of consecutive invalid moves |
 | `progress_velocity` | Average cells solved per step |
+
+## CHUK-R Reasoning Benchmark
+
+The **CHUK Reasoning Score (CHUK-R)** is a single aggregate benchmark (0-100) measuring reasoning capabilities across all 30 puzzle games, organized into 4 reasoning families:
+
+| Family | Games | Focus |
+|--------|-------|-------|
+| **Logic** | 10 | Pure deduction, grid uniqueness, pattern recognition |
+| **Constraint** | 12 | Multi-constraint interaction, sums, connectivity, topology |
+| **Search** | 4 | Feedback-driven, iterative refinement, path-finding |
+| **Planning** | 4 | Sequential actions, irreversible decisions, optimization |
+
+### Scoring Formula
+
+Each solved episode scores 0-100 based on weighted components:
+
+| Component | Weight | Formula |
+|-----------|--------|---------|
+| Efficiency | 40% | `optimal_steps / steps_taken` |
+| Error rate | 15% | `1 - (invalid / total)` |
+| Backtrack | 15% | `1 - backtrack_rate` |
+| Steadiness | 15% | `progress_steadiness` |
+| Hint independence | 15% | `1 - hint_dependency` |
+
+Unsolved episodes score **0**. Aggregation: episode → game (mean) → family (mean) → **CHUK-R** (mean of 4 families).
+
+### CLI Usage
+
+```bash
+# Full benchmark (all 30 games)
+chuk-puzzles-benchmark -d easy -n 5 -v
+
+# Single family
+chuk-puzzles-benchmark --family Logic -n 10
+
+# Specific games
+chuk-puzzles-benchmark --games sudoku,kenken,mastermind -o json
+
+# List game-to-family mapping
+chuk-puzzles-benchmark --list-families
+
+# Solver-free mode (pure model reasoning, no hints)
+chuk-puzzles-benchmark --solver-free
+```
+
+### Sample Output
+
+```
+================================================================
+  CHUK REASONING SCORE (CHUK-R)
+================================================================
+  Difficulty:     Easy
+  Episodes/game:  5
+  Solver:         hints (budget=100, penalty=0.0)
+  Coverage:       100% (30/30 games)
+
+----------------------------------------------------------------
+  Family            Score    Games   Solve%
+----------------------------------------------------------------
+  Logic             82.3    10/10      93%
+  Constraint        74.6    12/12      87%
+  Search            69.1     4/4       80%
+  Planning          58.2     4/4       65%
+----------------------------------------------------------------
+  CHUK-R            71.1
+================================================================
+```
+
+### LLM Agent Benchmark
+
+Test actual LLMs (GPT-4o-mini, GPT-4o, etc.) against the CHUK-R benchmark:
+
+```bash
+# Set API key
+export OPENAI_API_KEY="sk-..."
+
+# Quick test on one game
+python examples/llm_benchmark_agent.py --game sudoku --episodes 3 -v
+
+# Test multiple games
+python examples/llm_benchmark_agent.py --games sudoku,binary,kenken --episodes 2
+
+# Full family benchmark
+python examples/llm_benchmark_agent.py --family Logic --episodes 2
+
+# Use different model
+python examples/llm_benchmark_agent.py --model gpt-4o --game sudoku
+```
+
+The LLM agent receives puzzle state and rules, decides moves autonomously, and produces a CHUK-R score for comparison against baselines.
 
 ## Dataset Export
 
