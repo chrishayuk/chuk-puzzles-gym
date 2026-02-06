@@ -29,7 +29,6 @@ from chuk_puzzles_gym.eval import evaluate_game, run_episode
 from chuk_puzzles_gym.games import AVAILABLE_GAMES
 from chuk_puzzles_gym.gym_env import PuzzleEnv
 
-
 # ── Scenario 1: Perfect solver via hints ─────────────────────────────────────
 
 
@@ -113,9 +112,7 @@ async def demo_gym_agent():
         if hint is None:
             break
         row, col, val = hint[0]
-        obs, reward, terminated, truncated, info = await env.step(
-            f"place {row} {col} {val}"
-        )
+        obs, reward, terminated, truncated, info = await env.step(f"place {row} {col} {val}")
         steps += 1
         if terminated:
             break
@@ -159,8 +156,10 @@ async def demo_multi_game():
 
     games = ["sudoku", "kenken", "binary", "bridges", "lights", "knapsack"]
 
-    print(f"\n  {'Game':20s} {'Status':8s} {'Steps':>5s} {'Inv':>4s} "
-          f"{'BT':>3s} {'Steady':>7s} {'Overhead':>9s} {'Vel':>5s} {'ErrMax':>6s}")
+    print(
+        f"\n  {'Game':20s} {'Status':8s} {'Steps':>5s} {'Inv':>4s} "
+        f"{'BT':>3s} {'Steady':>7s} {'Overhead':>9s} {'Vel':>5s} {'ErrMax':>6s}"
+    )
     print("  " + "-" * 75)
 
     for game_name in games:
@@ -213,15 +212,16 @@ async def demo_eval_harness():
 
     # JSON output (includes reasoning metrics per episode)
     import json
+
     parsed = json.loads(report.to_json())
     print("\n  JSON summary.reasoning:")
     print(f"    {json.dumps(parsed['summary'].get('reasoning', {}), indent=4)}")
 
     # CSV output (includes reasoning columns)
     csv_lines = report.to_csv().strip().split("\n")
-    print(f"\n  CSV header:")
+    print("\n  CSV header:")
     print(f"    {csv_lines[0]}")
-    print(f"  CSV first row:")
+    print("  CSV first row:")
     print(f"    {csv_lines[1]}")
 
 

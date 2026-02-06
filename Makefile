@@ -117,7 +117,7 @@ run:
 
 run-direct:
 	@echo "Starting Puzzle Arcade Server (direct mode)..."
-	$(PYTHON) -m puzzle_arcade_server.server
+	$(PYTHON) -m chuk_puzzles_gym.server
 
 # Testing
 test:
@@ -131,9 +131,9 @@ test:
 test-cov coverage:
 	@echo "Running tests with coverage..."
 	@if command -v uv >/dev/null 2>&1; then \
-		PYTHONPATH=$(SRC_DIR) uv run pytest $(TEST_DIR) --cov=$(SRC_DIR)/puzzle_arcade_server --cov-report=term-missing --cov-report=html; \
+		PYTHONPATH=$(SRC_DIR) uv run pytest $(TEST_DIR) --cov=$(SRC_DIR)/chuk_puzzles_gym --cov-report=term-missing --cov-report=html; \
 	else \
-		PYTHONPATH=$(SRC_DIR) $(PYTEST) $(TEST_DIR) --cov=$(SRC_DIR)/puzzle_arcade_server --cov-report=term-missing --cov-report=html; \
+		PYTHONPATH=$(SRC_DIR) $(PYTEST) $(TEST_DIR) --cov=$(SRC_DIR)/chuk_puzzles_gym --cov-report=term-missing --cov-report=html; \
 	fi
 	@echo ""
 	@echo "Coverage report generated in htmlcov/index.html"
@@ -500,33 +500,33 @@ example-ws-solve:
 eval:
 	@echo "Running evaluation harness (quick check)..."
 	@if command -v uv >/dev/null 2>&1; then \
-		PYTHONPATH=$(SRC_DIR) uv run python -m puzzle_arcade_server.eval --all -d easy -n 3 -v; \
+		PYTHONPATH=$(SRC_DIR) uv run python -m chuk_puzzles_gym.eval --all -d easy -n 3 -v; \
 	else \
-		PYTHONPATH=$(SRC_DIR) $(PYTHON) -m puzzle_arcade_server.eval --all -d easy -n 3 -v; \
+		PYTHONPATH=$(SRC_DIR) $(PYTHON) -m chuk_puzzles_gym.eval --all -d easy -n 3 -v; \
 	fi
 
 eval-sudoku:
 	@echo "Evaluating Sudoku (10 episodes)..."
 	@if command -v uv >/dev/null 2>&1; then \
-		PYTHONPATH=$(SRC_DIR) uv run python -m puzzle_arcade_server.eval sudoku -d medium -n 10 -v; \
+		PYTHONPATH=$(SRC_DIR) uv run python -m chuk_puzzles_gym.eval sudoku -d medium -n 10 -v; \
 	else \
-		PYTHONPATH=$(SRC_DIR) $(PYTHON) -m puzzle_arcade_server.eval sudoku -d medium -n 10 -v; \
+		PYTHONPATH=$(SRC_DIR) $(PYTHON) -m chuk_puzzles_gym.eval sudoku -d medium -n 10 -v; \
 	fi
 
 eval-all:
 	@echo "Evaluating all games (10 episodes each)..."
 	@if command -v uv >/dev/null 2>&1; then \
-		PYTHONPATH=$(SRC_DIR) uv run python -m puzzle_arcade_server.eval --all -d easy -n 10 -v; \
+		PYTHONPATH=$(SRC_DIR) uv run python -m chuk_puzzles_gym.eval --all -d easy -n 10 -v; \
 	else \
-		PYTHONPATH=$(SRC_DIR) $(PYTHON) -m puzzle_arcade_server.eval --all -d easy -n 10 -v; \
+		PYTHONPATH=$(SRC_DIR) $(PYTHON) -m chuk_puzzles_gym.eval --all -d easy -n 10 -v; \
 	fi
 
 eval-json:
 	@echo "Evaluating all games (JSON output)..."
 	@if command -v uv >/dev/null 2>&1; then \
-		PYTHONPATH=$(SRC_DIR) uv run python -m puzzle_arcade_server.eval --all -d easy -n 5 -o json; \
+		PYTHONPATH=$(SRC_DIR) uv run python -m chuk_puzzles_gym.eval --all -d easy -n 5 -o json; \
 	else \
-		PYTHONPATH=$(SRC_DIR) $(PYTHON) -m puzzle_arcade_server.eval --all -d easy -n 5 -o json; \
+		PYTHONPATH=$(SRC_DIR) $(PYTHON) -m chuk_puzzles_gym.eval --all -d easy -n 5 -o json; \
 	fi
 
 # CHUK-R Benchmark
@@ -557,9 +557,9 @@ benchmark-json:
 list-games:
 	@echo "Available games:"
 	@if command -v uv >/dev/null 2>&1; then \
-		PYTHONPATH=$(SRC_DIR) uv run python -m puzzle_arcade_server.eval --list-games; \
+		PYTHONPATH=$(SRC_DIR) uv run python -m chuk_puzzles_gym.eval --list-games; \
 	else \
-		PYTHONPATH=$(SRC_DIR) $(PYTHON) -m puzzle_arcade_server.eval --list-games; \
+		PYTHONPATH=$(SRC_DIR) $(PYTHON) -m chuk_puzzles_gym.eval --list-games; \
 	fi
 
 # Development helpers

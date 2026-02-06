@@ -139,6 +139,6 @@ exclude_lines = [
     "@abstractmethod",
 ]
 omit = [
-    "src/puzzle_arcade_server/server.py",  # Requires chuk-protocol-server integration testing
-    "src/puzzle_arcade_server/__init__.py",  # Lazy loading helper
+    "src/chuk_puzzles_gym/server.py",  # Requires chuk-protocol-server integration testing
+    "src/chuk_puzzles_gym/__init__.py",  # Lazy loading helper
 ]
