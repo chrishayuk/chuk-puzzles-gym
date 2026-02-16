@@ -436,7 +436,7 @@ class EpisodeTracer:
         self._events: list[TraceEvent] = []
 
         if output is not None:
-            if isinstance(output, (str, Path)):
+            if isinstance(output, str | Path):
                 self._output = open(output, "a", encoding="utf-8")
                 self._owns_file = True
             else:

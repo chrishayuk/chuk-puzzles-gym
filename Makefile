@@ -329,7 +329,6 @@ publish:
 	echo "  - Publish to PyPI"; \
 	echo ""; \
 	echo "Monitor progress at:"; \
-	echo "  https://github.com/chrishayuk/puzzle-arcade-server/actions"
 
 publish-manual: build
 	@echo "Manual PyPI Publishing"

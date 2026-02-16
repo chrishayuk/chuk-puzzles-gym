@@ -1,9 +1,9 @@
 """Knapsack game enums."""
 
-from enum import Enum
+from enum import StrEnum
 
 
-class KnapsackAction(str, Enum):
+class KnapsackAction(StrEnum):
     """Actions for Knapsack game."""
 
     SELECT = "select"

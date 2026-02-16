@@ -1,14 +1,15 @@
 # chuk-puzzles-gym
 
 [![PyPI](https://img.shields.io/pypi/v/chuk-puzzles-gym.svg)](https://pypi.org/project/chuk-puzzles-gym/)
-[![Test](https://github.com/chrishayuk/chuk-puzzles-gym/workflows/Test/badge.svg)](https://github.com/chrishayuk/chuk-puzzles-gym/actions)
 [![Coverage](https://img.shields.io/badge/coverage-94%25-brightgreen)](htmlcov/index.html)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 [![Pydantic v2](https://img.shields.io/badge/pydantic-v2-purple.svg)](https://docs.pydantic.dev/)
 [![Type Checked](https://img.shields.io/badge/type%20checked-mypy-blue.svg)](http://mypy-lang.org/)
 
-A **multi-game puzzle gym** for **LLM training and benchmarking**, hosting 30 different logic puzzle types with synthetic data generation. Built using [chuk-gym-core](https://github.com/chrishayuk/chuk-gym-core) and [chuk-protocol-server](https://github.com/chrishayuk/chuk-protocol-server).
+A **multi-game puzzle gym** for **LLM training and benchmarking**, hosting 30 different logic puzzle types with synthetic data generation. Built using chuk-gym-core and chuk-protocol-server.
+
+> This is a demonstration project provided as-is for learning and testing purposes.
 
 **Perfect for:**
 - 🤖 **LLM Agent Testing** - Benchmark reasoning capabilities across constraint types
@@ -264,8 +265,6 @@ chuk-puzzles-eval            # Run evaluation
 ##### Using UV (Recommended)
 
 ```bash
-# Clone the repository
-git clone https://github.com/chrishayuk/chuk-puzzles-gym.git
 cd chuk-puzzles-gym
 
 # Install UV if you haven't already
@@ -281,8 +280,6 @@ make run
 ##### Using pip
 
 ```bash
-# Clone the repository
-git clone https://github.com/chrishayuk/chuk-puzzles-gym.git
 cd chuk-puzzles-gym
 
 # Install in development mode with dev dependencies
@@ -1101,7 +1098,7 @@ Number placed successfully!
 
 ## Architecture
 
-This server is built on the [chuk-protocol-server](https://github.com/chrishayuk/chuk-protocol-server) framework, which provides:
+This server is built on the chuk-protocol-server framework, which provides:
 
 - Multiple transport protocol support (Telnet, TCP, WebSocket, WS-Telnet)
 - Telnet protocol negotiation (IAC, WILL, WONT, DO, DONT)
@@ -1180,8 +1177,6 @@ The `ArcadeHandler` class manages:
 ### Setup Development Environment
 
 ```bash
-# Clone the repository
-git clone https://github.com/chrishayuk/chuk-puzzles-gym.git
 cd chuk-puzzles-gym
 
 # Install development dependencies (with UV)
@@ -1481,7 +1476,6 @@ Learn about constraint satisfaction problems:
 - **Well-documented code** showing puzzle generation algorithms
 - **Comprehensive tests** (1323 tests, 94% coverage) demonstrating validation
 - **Deterministic seeding** - Reproduce any puzzle for debugging/testing
-- **Production-ready** - 9.8/10 code quality score
 - **Type-safe** - Full Pydantic v2 and MyPy compliance
 - **Modular architecture** - Each game is self-contained in its own folder
 
@@ -1675,18 +1669,16 @@ See [ROADMAP.md](ROADMAP.md) for the full development roadmap.
 
 ## License
 
-MIT License - see the main chuk-protocol-server project for details.
+Apache License 2.0 - See LICENSE for details.
 
 ## Credits
 
-- Built using the [chuk-protocol-server](https://github.com/chrishayuk/chuk-protocol-server) framework
+- Built using chuk-protocol-server
 - Puzzle generation algorithms based on backtracking and constraint propagation
 - Uses modern Python tooling: UV, Ruff, MyPy, Pytest
 
 ## Links
 
-- [chuk-protocol-server](https://github.com/chrishayuk/chuk-protocol-server) - Multi-transport server framework
-- [sudoku-telnet-server](https://github.com/chrishayuk/sudoku-telnet-server) - Original single-game implementation
 - [UV](https://github.com/astral-sh/uv) - Fast Python package manager
 - [Ruff](https://github.com/astral-sh/ruff) - Fast Python linter and formatter
 - [Fly.io](https://fly.io) - Cloud deployment platform

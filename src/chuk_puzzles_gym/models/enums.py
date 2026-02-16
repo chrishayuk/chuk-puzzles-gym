@@ -1,6 +1,6 @@
 """Enums for the Puzzle Arcade server."""
 
-from enum import Enum, IntEnum
+from enum import IntEnum, StrEnum
 
 # Import DifficultyLevel from chuk-gym-core for unified difficulty levels
 from chuk_gym_core import DifficultyLevel
@@ -16,7 +16,7 @@ __all__ = [
 ]
 
 
-class GameCommand(str, Enum):
+class GameCommand(StrEnum):
     """Commands available in game mode."""
 
     QUIT = "quit"
@@ -75,7 +75,7 @@ class ConnectionState(IntEnum):
     CONNECTED = 2
 
 
-class OutputMode(str, Enum):
+class OutputMode(StrEnum):
     """Output mode for the server.
 
     - NORMAL: Human-friendly output with explanations and formatting
@@ -94,7 +94,7 @@ class OutputMode(str, Enum):
     JSON = "json"
 
 
-class EpisodeStatus(str, Enum):
+class EpisodeStatus(StrEnum):
     """Status of a puzzle episode."""
 
     IN_PROGRESS = "in_progress"

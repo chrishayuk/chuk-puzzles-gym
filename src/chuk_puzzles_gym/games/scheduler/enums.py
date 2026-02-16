@@ -1,9 +1,9 @@
 """Scheduler game enums."""
 
-from enum import Enum
+from enum import StrEnum
 
 
-class SchedulerAction(str, Enum):
+class SchedulerAction(StrEnum):
     """Actions for Scheduler game."""
 
     ASSIGN = "assign"

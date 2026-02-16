@@ -8,10 +8,7 @@ version = "0.10.3"
 description = "Multi-game puzzle gym for LLM training and benchmarking - 30 constraint puzzles with synthetic data generation"
 readme = "README.md"
 requires-python = ">=3.11"
-license = {text = "MIT"}
-authors = [
-    {name = "Chris Hay"}
-]
+license = {text = "Apache-2.0"}
 keywords = ["puzzle", "gym", "llm", "training", "benchmark", "sudoku", "kenken", "constraint-satisfaction", "reasoning", "mcp"]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -48,10 +45,6 @@ chuk-puzzles-eval = "chuk_puzzles_gym.eval:main"
 chuk-puzzles-export = "chuk_puzzles_gym.export.dataset:main"
 chuk-puzzles-benchmark = "chuk_puzzles_gym.benchmark.cli:main"
 
-[project.urls]
-Homepage = "https://github.com/chrishayuk/chuk-puzzles-gym"
-Repository = "https://github.com/chrishayuk/chuk-puzzles-gym"
-Documentation = "https://github.com/chrishayuk/chuk-puzzles-gym#readme"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
@@ -113,8 +106,8 @@ no_strict_optional = true
 follow_imports = "skip"
 follow_imports_for_stubs = false
 plugins = ["pydantic.mypy"]
-# Disable prop-decorator error for pydantic's @computed_field @property pattern
-disable_error_code = ["prop-decorator"]
+# Disable misc error for pydantic's @computed_field @property pattern
+disable_error_code = ["misc"]
 
 [tool.pydantic-mypy]
 init_forbid_extra = true

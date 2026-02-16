@@ -1,9 +1,9 @@
 """Nurikabe game enums."""
 
-from enum import Enum
+from enum import StrEnum
 
 
-class NurikabeColor(str, Enum):
+class NurikabeColor(StrEnum):
     """Colors for Nurikabe cells."""
 
     WHITE = "white"

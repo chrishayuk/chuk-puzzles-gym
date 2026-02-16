@@ -1,9 +1,9 @@
 """Minesweeper game enums."""
 
-from enum import Enum
+from enum import StrEnum
 
 
-class MinesweeperAction(str, Enum):
+class MinesweeperAction(StrEnum):
     """Actions for Minesweeper game."""
 
     REVEAL = "reveal"

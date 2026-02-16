@@ -1,9 +1,9 @@
 """KenKen game enums."""
 
-from enum import Enum
+from enum import StrEnum
 
 
-class ArithmeticOperation(str, Enum):
+class ArithmeticOperation(StrEnum):
     """Arithmetic operations for KenKen cages."""
 
     ADD = "+"
